@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: mandate-reference
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: "8787"
+      - key: MONAD_RPC_URL
+        sync: false
+      - key: MONAD_CHAIN_ID
+        sync: false
+      - key: MANDATE_REGISTRY
+        sync: false
+      - key: MANDATE_EXECUTOR
+        sync: false
+      - key: ERC8004_IDENTITY_REGISTRY
+        sync: false
+      - key: ERC8004_REPUTATION_ADAPTER
+        sync: false
+      - key: ENVIO_GRAPHQL_URL
+        sync: false
+      - key: PRIVY_APP_ID
+        sync: false
+      - key: PRIVY_APP_SECRET
+        sync: false
+      - key: DEMO_AGENT_DEPLOYER_KEY
+        sync: false
+      - key: VITE_RP_ID
+        sync: false

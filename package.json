@@ -1,0 +1,9 @@
+{
+  "name": "mandate",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "echo 'not wired yet'",
+    "build": "echo 'not wired yet'"
+  }
+}

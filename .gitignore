@@ -1,0 +1,60 @@
+# --- secrets / env (never commit) ---
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.p12
+*.pfx
+*.key
+!*.sol
+id_rsa
+id_ed25519
+*.secret
+secrets.json
+credentials.json
+auth.json
+service-account*.json
+.privy/
+.mera/
+
+# --- node ---
+node_modules/
+dist/
+build/
+.turbo/
+.cache/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log
+
+# --- foundry ---
+contracts/cache/
+contracts/out/
+contracts/broadcast/
+contracts/lib/
+lcov.info
+coverage/
+
+# --- vite / frontend ---
+apps/web/dist/
+apps/server/dist/
+*.local
+
+# --- indexer / cre ---
+.envio/
+generated/
+cre/.cre/
+*.log
+
+# --- os / ide ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- docker ---
+*.tar
