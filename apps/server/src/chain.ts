@@ -84,4 +84,18 @@ export async function registerAgentIdentity(agentURI: string): Promise<{ agentId
   return { agentId: transfer.args.tokenId, tx: hash };
 }
 
+export async function identityOwnerOf(agentId: bigint): Promise<Address | undefined> {
+  const identity = mandateAddresses.erc8004Identity;
+  if (!identity) return undefined;
+  try {
+    return await publicClient.readContract({ address: identity, abi: ERC8004IdentityRegistryAbi, functionName: "ownerOf", args: [agentId] });
+  } catch {
+    return undefined;
+  }
+}
+
+export async function relayerBalance() {
+  return publicClient.getBalance({ address: deployer.address });
+}
+
 export const explorerTx = (h: string) => `https://testnet.monadexplorer.com/tx/${h}`;

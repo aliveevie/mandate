@@ -4,8 +4,8 @@ import { resolve } from "node:path";
 import type { Address, Hex } from "viem";
 import { MandateError, type SignedMandate } from "@ibxlab/mandate";
 import { config } from "./config.js";
-import { chain, deployAccount, deployer, explorerTx, mandateAddresses, publicClient, relayExecute, sdk } from "./chain.js";
-import { agentForMandate, agentState, forceOutOfBounds, getAgent, listAgents, provisionAgent, publicView, startAgent, stopAgent } from "./agents.js";
+import { chain, deployAccount, deployer, explorerTx, mandateAddresses, publicClient, relayExecute, relayerBalance, sdk } from "./chain.js";
+import { activateAgent, agentForMandate, agentState, forceOutOfBounds, getAgent, listAgents, prepareAgent, provisionAgent, publicView, startAgent, stopAgent, sweepAll } from "./agents.js";
 import { fetchAttestations } from "./envio.js";
 
 const app = express();
@@ -14,8 +14,8 @@ app.use(express.json({ limit: "256kb" }));
 const json = (res: Response, body: unknown, status = 200) =>
   res.status(status).type("application/json").send(JSON.stringify(body, (_, v) => (typeof v === "bigint" ? v.toString() : v)));
 
-const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) =>
-  fn(req, res).catch(next);
+const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) =>
+  fn(req, res, next).catch(next);
 
 // ------------------------------------------------------------------ health + public config
 
@@ -24,13 +24,13 @@ app.get("/healthz", (_req, res) => res.json({ ok: true, chainId: chain.id, relay
 app.get(
   "/api/config",
   wrap(async (_req, res) => {
-    const balance = await publicClient.getBalance({ address: deployer.address });
+    const balance = await relayerBalance();
     json(res, {
       chainId: chain.id,
       rpcUrl: config.rpcUrl,
       addresses: mandateAddresses,
-      demo: { asset: config.demo.asset, venue: config.demo.venue, mintAmount: config.demo.mintAmount },
-      relayer: { address: deployer.address, balance },
+      demo: { asset: config.demo.asset, venue: config.demo.venue, mintAmount: config.demo.mintAmount, agentGas: config.demo.agentGas },
+      relayer: { address: deployer.address, balance, min: config.demo.relayerMin, low: balance < config.demo.relayerMin },
       explorer: "https://testnet.monadexplorer.com",
       envio: !!config.envioUrl,
     });
@@ -39,8 +39,17 @@ app.get(
 
 // ------------------------------------------------------------------ relay (server pays gas; passkey authorises)
 
+const requireFunds = wrap(async (_req, res, next) => {
+  const balance = await relayerBalance();
+  if (balance < config.demo.relayerMin) {
+    return json(res, { error: "RelayerLowFunds", message: `The gasless relayer holds ${(Number(balance) / 1e18).toFixed(3)} MON, below its ${Number(config.demo.relayerMin) / 1e18} MON floor. Connect a wallet to pay your own gas, or fund ${deployer.address}.` }, 503);
+  }
+  next();
+}) as unknown as (req: Request, res: Response, next: NextFunction) => void;
+
 app.post(
   "/api/relay/account",
+  requireFunds,
   wrap(async (req, res) => {
     const { publicKey } = req.body as { publicKey: { x: Hex; y: Hex } };
     if (!publicKey?.x || !publicKey?.y) return json(res, { error: "publicKey {x,y} required" }, 400);
@@ -51,6 +60,7 @@ app.post(
 
 app.post(
   "/api/relay/execute",
+  requireFunds,
   wrap(async (req, res) => {
     const { account, call, signature } = req.body as { account: Address; call: { target: Address; value: string; data: Hex }; signature: Hex };
     const hash = await relayExecute(account, { target: call.target, value: BigInt(call.value ?? "0"), data: call.data }, signature);
@@ -60,6 +70,7 @@ app.post(
 
 app.post(
   "/api/relay/grant",
+  requireFunds,
   wrap(async (req, res) => {
     const body = req.body as { mandate: Record<string, unknown>; hash: Hex; digest: Hex; signature: Hex };
     const m = body.mandate;
@@ -91,6 +102,7 @@ app.post(
 
 app.post(
   "/api/relay/revoke",
+  requireFunds,
   wrap(async (req, res) => {
     const { account, mandateHash, signature } = req.body as { account: Address; mandateHash: Hex; signature: Hex };
     const tx = await sdk.mandate.revokeWithSignature(account, mandateHash, signature);
@@ -109,9 +121,21 @@ app.get("/api/agents", (_req, res) => json(res, listAgents()));
 
 app.post(
   "/api/agents",
+  requireFunds,
   wrap(async (req, res) => {
     const a = await provisionAgent((req.body as { label?: string })?.label);
     json(res, { ...publicView(a), explorer: explorerTx(a.registerTx) }, 201);
+  }),
+);
+
+// Wallet mode: the user's wallet registers the ERC-8004 identity and funds the key; the relayer pays nothing.
+app.post("/api/agents/prepare", (_req, res) => json(res, prepareAgent(), 201));
+app.post(
+  "/api/agents/activate",
+  wrap(async (req, res) => {
+    const b = req.body as { agentKey: Address; agentId: string; registerTx: Hex; fundTx: Hex; fundedBy: Address };
+    const a = await activateAgent({ agentKey: b.agentKey, agentId: BigInt(b.agentId), registerTx: b.registerTx, fundTx: b.fundTx, fundedBy: b.fundedBy });
+    json(res, publicView(a), 201);
   }),
 );
 
@@ -217,6 +241,14 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error(message);
   json(res, { error: "internal", message: message.slice(0, 500) }, 500);
 });
+
+for (const sig of ["SIGINT", "SIGTERM"] as const) {
+  process.once(sig, () => {
+    console.log(`${sig}: sweeping idle agent gas back to funders…`);
+    void sweepAll().finally(() => process.exit(0));
+    setTimeout(() => process.exit(0), 20_000).unref();
+  });
+}
 
 app.listen(config.port, () => {
   console.log(`mandate server on :${config.port} chain=${chain.id} relayer=${deployer.address} public=${existsSync(publicDir) ? publicDir : "(dev: vite)"}`);

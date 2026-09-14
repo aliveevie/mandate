@@ -1,8 +1,9 @@
 import { MandateError, type Agent, type MandateState } from "@ibxlab/mandate";
-import { encodeFunctionData, parseAbi, type Address, type Hex } from "viem";
+import { createWalletClient, encodeFunctionData, http, parseAbi, type Address, type Hex } from "viem";
+import { monadTestnet } from "viem/chains";
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { config } from "./config.js";
-import { deployerWallet, publicClient, registerAgentIdentity, sdk, wait } from "./chain.js";
+import { deployer, deployerWallet, identityOwnerOf, publicClient, registerAgentIdentity, sdk, wait } from "./chain.js";
 
 const venueAbi = parseAbi(["function buy(address token, uint256 amount)", "function forbidden()"]);
 
@@ -22,6 +23,10 @@ export interface DemoAgent {
   agentKey: Address;
   registerTx: Hex;
   fundTx: Hex;
+  /** Who paid for this agent's gas: the relayer, or a user's wallet in wallet mode. Sweeps go back here. */
+  fundedBy: Address;
+  /** Wallet-mode agents are created pending and activated once the wallet has registered + funded them. */
+  pending?: boolean;
   createdAt: number;
   running: boolean;
   mandateHash?: Hex;
@@ -59,6 +64,8 @@ export function publicView(a: DemoAgent, mandateHash?: Hex) {
     agentKey: a.agentKey,
     registerTx: a.registerTx,
     fundTx: a.fundTx,
+    fundedBy: a.fundedBy,
+    pending: !!a.pending,
     createdAt: a.createdAt,
     running: a.running,
     mandateHash: a.mandateHash,
@@ -70,8 +77,20 @@ export function publicView(a: DemoAgent, mandateHash?: Hex) {
 /** Provision: fresh executing key, funded for gas, registered as an ERC-8004 identity. */
 export async function provisionAgent(label = "demo-agent"): Promise<DemoAgent> {
   const account = privateKeyToAccount(generatePrivateKey());
-  const fundTx = await deployerWallet.sendTransaction({ to: account.address, value: config.demo.agentGas });
-  await wait(fundTx);
+  // Plain transfers have been seen reverting once on Monad testnet; retry before giving up.
+  let fundTx: Hex | undefined;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3 && !fundTx; attempt++) {
+    try {
+      const tx = await deployerWallet.sendTransaction({ to: account.address, value: config.demo.agentGas, gas: 30_000n });
+      await wait(tx);
+      fundTx = tx;
+    } catch (e) {
+      lastErr = e;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+  }
+  if (!fundTx) throw new Error(`Could not fund the agent key: ${(lastErr as Error)?.message?.split("\n")[0]}`);
   const { agentId, tx } = await registerAgentIdentity(`https://mandate.ibxlab.xyz/agents/${label}-${Date.now()}.json`);
   const agent: DemoAgent = {
     id: agentId.toString(),
@@ -79,6 +98,7 @@ export async function provisionAgent(label = "demo-agent"): Promise<DemoAgent> {
     agentKey: account.address,
     registerTx: tx,
     fundTx,
+    fundedBy: deployer.address,
     createdAt: Date.now(),
     running: false,
     feed: [{ at: Date.now(), kind: "info", message: `Agent ${agentId} registered in ERC-8004 and funded with gas` }],
@@ -86,6 +106,61 @@ export async function provisionAgent(label = "demo-agent"): Promise<DemoAgent> {
   };
   agents.set(agent.id, agent);
   return agent;
+}
+
+const pendingKeys = new Map<Address, PrivateKeyAccount>();
+
+/** Wallet mode, step 1: mint an executing key. The user's wallet registers the identity and funds it. */
+export function prepareAgent(): { agentKey: Address } {
+  const account = privateKeyToAccount(generatePrivateKey());
+  pendingKeys.set(account.address, account);
+  return { agentKey: account.address };
+}
+
+/** Wallet mode, step 2: verify the wallet's work on-chain and activate the agent. */
+export async function activateAgent(input: { agentKey: Address; agentId: bigint; registerTx: Hex; fundTx: Hex; fundedBy: Address }): Promise<DemoAgent> {
+  const account = pendingKeys.get(input.agentKey);
+  if (!account) throw new Error("Unknown pending agent key");
+  const [owner, balance] = await Promise.all([identityOwnerOf(input.agentId), publicClient.getBalance({ address: input.agentKey })]);
+  if (!owner) throw new Error(`ERC-8004 agent ${input.agentId} is not registered`);
+  if (balance === 0n) throw new Error("Agent key has no gas");
+  pendingKeys.delete(input.agentKey);
+  const agent: DemoAgent = {
+    id: input.agentId.toString(),
+    agentId: input.agentId,
+    agentKey: input.agentKey,
+    registerTx: input.registerTx,
+    fundTx: input.fundTx,
+    fundedBy: input.fundedBy,
+    createdAt: Date.now(),
+    running: false,
+    feed: [{ at: Date.now(), kind: "info", message: `Agent ${input.agentId} registered in ERC-8004 by ${input.fundedBy.slice(0, 8)}… and funded from that wallet` }],
+    account,
+  };
+  agents.set(agent.id, agent);
+  return agent;
+}
+
+/** Return unspent gas to whoever funded the agent. Keeps nothing: the agent is refuelled if it runs again. */
+export async function sweepAgent(a: DemoAgent): Promise<Hex | undefined> {
+  try {
+    const balance = await publicClient.getBalance({ address: a.agentKey });
+    const fees = await publicClient.estimateFeesPerGas();
+    const cost = 21_000n * (fees.maxFeePerGas ?? 0n);
+    if (balance <= cost * 2n) return undefined;
+    const wallet = createWalletClient({ account: a.account, chain: monadTestnet, transport: http(config.rpcUrl, { batch: true }) });
+    const hash = await wallet.sendTransaction({ to: a.fundedBy, value: balance - cost, gas: 21_000n, maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas });
+    await wait(hash);
+    push(a, { at: Date.now(), kind: "info", message: `Swept ${fmt(balance - cost)} MON back to ${a.fundedBy.slice(0, 8)}…`, tx: hash, mandateHash: a.mandateHash });
+    return hash;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Sweep every idle agent (used on shutdown). */
+export async function sweepAll() {
+  await Promise.allSettled([...agents.values()].filter((a) => !a.running).map(sweepAgent));
 }
 
 function loadSdkAgent(a: DemoAgent, mandateHash: Hex): Agent {
@@ -103,6 +178,7 @@ function stop(a: DemoAgent, reason: string) {
   a.running = false;
   a.stopReason = reason;
   push(a, { at: Date.now(), kind: "stopped", message: reason, mandateHash: a.mandateHash });
+  void sweepAgent(a);
 }
 
 const TERMINAL = new Set(["Tripped", "MandateRevoked", "MandateExpired", "MandateNotFound", "NotAgentKey"]);
@@ -111,9 +187,13 @@ const TERMINAL = new Set(["Tripped", "MandateRevoked", "MandateExpired", "Mandat
 async function refuel(a: DemoAgent) {
   const bal = await publicClient.getBalance({ address: a.agentKey });
   if (bal >= config.demo.agentGasMin) return;
+  if (a.fundedBy.toLowerCase() !== deployer.address.toLowerCase()) {
+    push(a, { at: Date.now(), kind: "info", message: "Agent gas is low; top up its key from your wallet to keep it running", mandateHash: a.mandateHash });
+    return;
+  }
   const tx = await deployerWallet.sendTransaction({ to: a.agentKey, value: config.demo.agentGasTopUp });
   await wait(tx);
-  push(a, { at: Date.now(), kind: "info", message: `Refuelled agent gas (+${fmt(config.demo.agentGasTopUp)} MON)`, tx });
+  push(a, { at: Date.now(), kind: "info", message: `Refuelled agent gas (+${fmt(config.demo.agentGasTopUp)} MON)`, tx, mandateHash: a.mandateHash });
 }
 
 async function tick(a: DemoAgent) {
