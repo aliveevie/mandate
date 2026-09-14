@@ -28,9 +28,15 @@ cd apps/server && DEMO_AGENT_DEPLOYER_KEY=0x… pnpm dev
 cd apps/web && pnpm dev            # http://localhost:5173
 ```
 
-Four screens: **Onboard** (create a passkey, the server deploys its account and seeds demo tokens), **Grant** (provision an ERC-8004 agent, sign a scoped mandate with the passkey), **Agent** (run the demo agent, watch spend vs caps and the breaker, force an out-of-bounds call, revoke), **Reputation** (ERC-8004 score and attestation history).
+Four screens: **Passkey** (create a passkey; its smart account is deployed and seeded with demo tokens), **Grant** (provision an ERC-8004 agent, sign a scoped mandate with the passkey), **Agent** (run the demo agent, watch spend vs caps and the breaker gauge, force an out-of-bounds call, revoke), **Reputation** (ERC-8004 score ring and attestation history).
 
-Proofs that run against the live app: `pnpm --filter server e2e` drives the whole flow through the API with a software passkey; `pnpm --filter web e2e` does the same in real Chrome with a WebAuthn virtual authenticator, so `navigator.credentials` and on-chain P256 verification are exercised for real.
+**Two ways to pay gas, one way to authorise.** The passkey always authorises. With a wallet connected (MetaMask, Rabby, Phantom on Monad testnet) your wallet signs and pays every principal transaction, and it registers and funds your own ERC-8004 agent, so the relayer is not involved. Without a wallet the app runs in gasless demo mode and the server's relayer pays. Unspent agent gas is swept back to whoever funded the agent when it stops.
+
+Proofs that run against the live app: `pnpm --filter server e2e` drives the whole flow through the API with a software passkey; `pnpm --filter web e2e` does the same in real Chrome with a WebAuthn virtual authenticator, so `navigator.credentials` and on-chain P256 verification are exercised for real; `WALLET_KEY=0x… node apps/web/e2e/wallet.mjs` runs wallet mode with an injected signing provider and asserts the relayer sent nothing for the principal.
+
+## Security and CI
+
+`docs/security.md` holds the threat model, the seven tested properties and the Slither triage. CI (`.github/workflows/ci.yml`) runs the Foundry suite with invariants at the CI profile, the SDK anvil e2e, indexer codegen and typecheck, web and server builds, the Docker image, gitleaks over history, Slither with the triaged config, and a strict docs build.
 
 ### Deploy to Render
 

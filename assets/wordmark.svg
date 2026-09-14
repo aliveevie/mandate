@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs>
+  <rect width="1200" height="320" rx="48" fill="#07070d"/>
+  <rect x="64" y="64" width="192" height="192" rx="44" fill="url(#g)"/>
+  <path d="M114 196V124l46 40 46-40v72" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="304" y="176" fill="#fff" font-family="Inter, Helvetica, Arial, sans-serif" font-size="112" font-weight="800" letter-spacing="-4">Mandate</text>
+  <text x="308" y="236" fill="rgba(255,255,255,.55)" font-family="Inter, Helvetica, Arial, sans-serif" font-size="34" font-weight="500">delegation &amp; trust for the agent economy on Monad</text>
+</svg>
