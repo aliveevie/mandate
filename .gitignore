@@ -57,3 +57,4 @@ Thumbs.db
 
 # --- docker ---
 *.tar
+contracts/deployments/local.json
