@@ -59,3 +59,4 @@ Thumbs.db
 *.tar
 contracts/deployments/local.json
 site/
+apps/web/e2e/*.png
