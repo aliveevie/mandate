@@ -74,7 +74,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install slither-analyzer
-      - run: slither . --filter-paths "lib/|test/|script/" --exclude-dependencies --fail-high
+      - run: slither . # detectors, paths and fail level come from contracts/slither.config.json
         working-directory: contracts
 
   docs:

@@ -1,6 +1,6 @@
 {
   "filter_paths": "lib/|test/|script/",
   "exclude_dependencies": true,
-  "detectors_to_exclude": "arbitrary-send-eth,incorrect-equality,timestamp,missing-zero-check,uninitialized-local,reentrancy-events,naming-convention,assembly,low-level-calls,cyclomatic-complexity",
+  "detectors_to_exclude": "arbitrary-send-eth,incorrect-equality,timestamp,missing-zero-check,uninitialized-local,reentrancy-events,naming-convention,assembly,low-level-calls,cyclomatic-complexity,reentrancy-balance,unindexed-event-address",
   "fail_on": "medium"
 }

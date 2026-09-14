@@ -41,7 +41,7 @@ Run them: `cd contracts && forge test` (67 tests, invariants at 256 runs under t
 
 ## Static analysis: Slither triage
 
-Slither 0.11 over `contracts/src` (libraries, tests and scripts excluded): 23 results, 0 exploitable. Every finding below is either the protocol working as designed or informational. CI runs Slither with these detectors excluded (`contracts/slither.config.json`) and fails on anything new at medium severity or above.
+Slither 0.11 locally and the current release in CI over `contracts/src` (libraries, tests and scripts excluded): 25 distinct results, 0 exploitable. Every finding below is either the protocol working as designed or informational. CI runs Slither with these detectors excluded (`contracts/slither.config.json`) and fails on anything new at medium severity or above.
 
 | Detector | Impact | Where | Verdict |
 |---|---|---|---|
@@ -50,6 +50,8 @@ Slither 0.11 over `contracts/src` (libraries, tests and scripts excluded): 23 re
 | `incorrect-equality` | Medium | `RiskBreaker.checkpoint` (Cooldown re-arm) | **Accepted.** The flagged expression is `phase == Cooldown && drawdown <= threshold`, an enum equality guarding a `<=` comparison. |
 | `uninitialized-local` | Medium | `ERC8004ReputationAdapter.attest` (`mirrored`) | **Accepted.** Solidity zero-initialises locals; `mirrored` is `false` unless the try branch sets it, which is the intended semantics. |
 | `missing-zero-check` | Low | constructors of `PasskeyAccount`, `MandateExecutor`, `PrivateSubmitter`, `RiskBreaker`; `setSubmitter`; `setReputationRegistry` | **Accepted.** Immutable wiring is set by `script/Deploy.s.sol` and proven by the end-to-end run; a zero address here is a deploy-time misconfiguration that fails loudly on first use, not an attack surface. `setReputationRegistry(0)` is intentionally allowed to disable mirroring. |
+| `reentrancy-balance` | Medium | `MandateExecutor._callAndMeasure` | **Accepted, by design.** The executor reads the principal's asset balance, performs the mandated call, and reads it again: that is how real outflow is measured against the declared bound. The function is behind `nonReentrant`, only the whitelisted target is called, and no protocol state is written between the two reads. |
+| `unindexed-event-address` | Info | admin events `AttestorSet`, `ReputationRegistrySet`, `SubmitterSet`, `Configured` | **Accepted.** One-shot or owner-only configuration events; not queried by address. |
 | `reentrancy-events` | Low | `MandateRegistry.grant`, `ERC8004ReputationAdapter.attest` | **Accepted.** Events emitted after an external call to a trusted, immutable dependency (the breaker) or inside a try/catch to the ERC-8004 registry. No state is written after the call that a reentrant caller could exploit; `grant` mutates all state before calling the breaker. |
 | `timestamp` | Low | validity window checks | **Accepted.** Expiry is defined in seconds; validator timestamp drift is bounded and cannot extend a mandate past `validUntil` by more than that drift. |
 | `assembly`, `low-level-calls` | Info | `PasskeyAccount._call` | **Accepted.** Revert-bubbling of the target call so venue errors reach the agent verbatim. |
