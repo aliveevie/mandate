@@ -33,7 +33,7 @@ const cb = page.locator("input[type=checkbox]");
 if (await cb.isChecked()) await cb.uncheck();
 await page.click("text=Create passkey & account");
 await waitText(/owned by your passkey/, 180_000);
-const address = (await body()).match(/0x[0-9a-fA-F]{6}…[0-9a-fA-F]{8}/)?.[0];
+const address = (await body()).match(/0x[0-9a-fA-F]{8}…[0-9a-fA-F]{8}/)?.[0];
 const creds = await cdp.send("WebAuthn.getCredentials", { authenticatorId });
 lap(`WebAuthn passkey created in Chrome (${creds.credentials.length} credential, rpId=${creds.credentials[0]?.rpId}); account ${address}`);
 await page.click("text=Approve venue with passkey");
@@ -55,7 +55,7 @@ lap(`mandate granted ${mandateHash.slice(0, 12)} (EIP-712 digest signed via WebA
 await shot("grant");
 // 3. Agent
 await page.click("text=Run the agent");
-await page.click("button:has-text('Run')");
+await page.getByRole("button", { name: "Run", exact: true }).click();
 await waitText(/buy \d/, 90_000);
 lap("first execution in feed");
 await waitText(/Frozen by Tripped|Lifetime spend cap reached/, 300_000);

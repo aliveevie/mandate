@@ -84,7 +84,7 @@ await waitText(/Mandate granted/);
 const mandateHash = (await body()).match(/0x[0-9a-f]{64}/)[0];
 lap(`mandate granted by the WALLET ${mandateHash.slice(0, 12)}`);
 await page.click("text=Run the agent");
-await page.click("button:has-text('Run')");
+await page.getByRole("button", { name: "Run", exact: true }).click();
 await waitText(/buy \d/, 90_000);
 lap("agent executing (agent key pays its own gas)");
 await page.click("text=Revoke with passkey");

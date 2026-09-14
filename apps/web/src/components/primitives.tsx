@@ -106,13 +106,13 @@ export function Gauge({ value, threshold, max = 100, label, unit = "%", tone }: 
   const color = tone === "bad" ? "#fb7185" : tone === "warn" ? "#fbbf24" : "#34d399";
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox="0 0 120 68" className="w-full max-w-[220px]">
+      <svg viewBox="0 0 120 66" className="w-full max-w-[220px]">
         <path d="M6 60 A54 54 0 0 1 114 60" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="10" strokeLinecap="round" />
         <path d="M6 60 A54 54 0 0 1 114 60" fill="none" stroke={color} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${vLen} ${c}`} style={{ transition: "stroke-dasharray .7s ease" }} />
         <line x1={60 + (r - 9) * Math.cos(tAngle)} y1={60 - (r - 9) * Math.sin(tAngle)} x2={tx + 9 * Math.cos(tAngle)} y2={ty - 9 * Math.sin(tAngle)} stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-        <text x="60" y="50" textAnchor="middle" fill="#fff" fontSize="18" fontWeight="700">{value.toFixed(1)}{unit}</text>
-        <text x="60" y="64" textAnchor="middle" fill="rgba(255,255,255,.45)" fontSize="7.5">{label} · trips at {threshold}{unit}</text>
+        <text x="60" y="54" textAnchor="middle" fill="#fff" fontSize="19" fontWeight="700">{value.toFixed(1)}{unit}</text>
       </svg>
+      <div className="mt-1 text-[11px] text-white/45">{label} · trips at {threshold}{unit}</div>
     </div>
   );
 }
