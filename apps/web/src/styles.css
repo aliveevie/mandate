@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+@layer base {
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+}
