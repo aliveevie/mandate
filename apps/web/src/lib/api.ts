@@ -19,8 +19,8 @@ export interface PublicConfig {
   chainId: number;
   rpcUrl: string;
   addresses: { registry: string; executor: string; breaker: string; submitter: string; reputationAdapter: string; erc8004Identity?: string; erc8004Reputation?: string };
-  demo: { asset: `0x${string}`; venue: `0x${string}`; mintAmount: string };
-  relayer: { address: string; balance: string };
+  demo: { asset: `0x${string}`; venue: `0x${string}`; mintAmount: string; agentGas: string };
+  relayer: { address: string; balance: string; min: string; low: boolean };
   explorer: string;
   envio: boolean;
 }
@@ -31,6 +31,8 @@ export interface AgentView {
   agentKey: `0x${string}`;
   registerTx: string;
   fundTx: string;
+  fundedBy?: string;
+  pending?: boolean;
   createdAt: number;
   running: boolean;
   mandateHash?: `0x${string}`;
