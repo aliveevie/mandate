@@ -22,6 +22,7 @@ Mandate is a primitive, not a product. The reference app exists only to prove th
 - **How mandates, the breaker and reputation fit together**: [Concepts](concepts.md)
 - **Threat model and the seven tested properties**: [Security](security.md)
 - **GraphQL for mandates, executions and reputation**: [Indexer](indexer.md)
+- **Reference app** (four screens, Dockerised, Render Blueprint): `apps/` in the repository, see the root README
 
 ## The three Monad primitives, and how Mandate uses each
 
