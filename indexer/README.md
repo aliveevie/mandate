@@ -6,7 +6,8 @@ Envio HyperIndex (v3) for the Mandate protocol on Monad testnet. Indexes `Mandat
 pnpm install
 pnpm codegen      # regenerate .envio/types.d.ts after editing config.yaml or schema.graphql
 pnpm typecheck
-pnpm dev          # local run: needs Docker (Postgres + Hasura). GraphQL at http://localhost:8080
+pnpm dev          # local run: needs Docker (Postgres + Hasura). GraphQL at http://localhost:8080, admin secret `testing`
+                  # syncs over the public Monad RPC (no Envio token needed); see the rpc note in config.yaml
 ```
 
 ## Deploy to Envio Cloud

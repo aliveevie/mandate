@@ -57,6 +57,10 @@ pnpm typecheck
 pnpm dev            # local Postgres + Hasura via Docker, GraphQL at http://localhost:8080
 ```
 
+The local run syncs over Monad's public RPC (`rpc: for: sync` in `config.yaml`) so no Envio API token is needed; expect a few minutes to catch up because the public RPC caps `eth_getLogs` ranges. On Envio Cloud a HyperSync token is present: switch that entry to `for: fallback` to sync over HyperSync in seconds and keep the RPC as backup.
+
+Verified locally against Monad testnet: the two granted mandates, three executions, the Armed and Tripped breaker rows, both principals, both agents and both attestations from the Phase 2 and quickstart runs are returned by the queries above.
+
 Production runs on Envio Cloud: connect the repository at [envio.dev](https://envio.dev), point it at `indexer/`, and set `ENVIO_GRAPHQL_URL` in the app and workflow environments to the hosted endpoint.
 
 The start block is the registry's deployment block on Monad testnet. Handlers are in `indexer/src/EventHandlers.ts`.

@@ -15,6 +15,17 @@ enum BreakerEventKind {
   PeakReset
 }
 
+# The breaker's Armed event is emitted inside the grant transaction before MandateGranted; this holds it
+# until the Mandate entity exists.
+type PendingArm {
+  id: ID!
+  peakEquity: BigInt!
+  block: BigInt!
+  timestamp: BigInt!
+  tx: String!
+  logIndex: Int!
+}
+
 type Principal {
   id: ID!
   mandateCount: Int!

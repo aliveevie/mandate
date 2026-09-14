@@ -8,6 +8,8 @@ const PHASES = ["Armed", "Tripped", "Cooldown"] as const;
 type Phase = (typeof PHASES)[number];
 const phaseOf = (n: bigint | number): Phase => PHASES[Number(n)] ?? "Armed";
 const rowId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
+/** bytes4 params arrive as 32-byte words; keep the 4-byte selector. */
+const selector4 = (b: string) => b.slice(0, 10);
 
 async function getOrCreatePrincipal(context: any, id: string): Promise<Principal> {
   return (
@@ -50,6 +52,22 @@ indexer.onEvent(
     const agent = await getOrCreateAgent(context, agentId, event.params.agentKey);
     context.Agent.set({ ...agent, agentKey: event.params.agentKey, mandateCount: agent.mandateCount + 1 });
 
+    const pending = await context.PendingArm.get(event.params.mandateHash);
+    if (pending) {
+      context.BreakerEvent.set({
+        id: rowId(pending.tx, pending.logIndex),
+        mandate_id: event.params.mandateHash,
+        agent_id: agentId,
+        kind: "Armed",
+        drawdownBps: undefined,
+        peakEquity: pending.peakEquity,
+        block: pending.block,
+        timestamp: pending.timestamp,
+        tx: pending.tx,
+      });
+      context.PendingArm.deleteUnsafe(pending.id);
+    }
+
     context.Mandate.set({
       id: event.params.mandateHash,
       principal_id: principalId,
@@ -69,7 +87,7 @@ indexer.onEvent(
       executionCount: 0,
       tripCount: 0,
       breakerPhase: "Armed",
-      peakEquity: 0n,
+      peakEquity: pending?.peakEquity ?? 0n,
       revoked: false,
       revokedAt: undefined,
       revokedTx: undefined,
@@ -119,7 +137,7 @@ indexer.onEvent(
       agent_id: agentId,
       agentKey: event.params.agentKey,
       target: event.params.target,
-      selector: event.params.selector,
+      selector: selector4(event.params.selector),
       declaredAmount: event.params.declaredAmount,
       spent: event.params.spent,
       phaseAfter: phase,
@@ -180,6 +198,19 @@ async function recordBreaker(
 const breakerFields = { transaction: ["hash"] } as const;
 
 indexer.onEvent({ contract: "RiskBreaker", event: "Armed", fields: { transaction: ["hash"], block: ["timestamp"] } }, async ({ event, context }) => {
+  const mandate = await context.Mandate.get(event.params.mandateHash);
+  if (!mandate) {
+    // Same transaction as grant, emitted before MandateGranted. Park it; the grant handler picks it up.
+    context.PendingArm.set({
+      id: event.params.mandateHash,
+      peakEquity: event.params.peakEquity,
+      block: BigInt(event.block.number),
+      timestamp: BigInt(event.block.timestamp),
+      tx: event.transaction.hash,
+      logIndex: event.logIndex,
+    });
+    return;
+  }
   await recordBreaker(context, event, "Armed", "Armed", { peakEquity: event.params.peakEquity });
 });
 
