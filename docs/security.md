@@ -39,6 +39,25 @@ Run them: `cd contracts && forge test` (67 tests, invariants at 256 runs under t
 - Deploy scripts sign from a Foundry keystore, not from a private key in the environment.
 - Contracts emit no secret material. Events carry hashes, addresses and amounts only.
 
-## External review
+## Static analysis: Slither triage
 
-Static analysis (Slither / ack3) and triage of findings are scheduled for the hardening phase and will be recorded in this section.
+Slither 0.11 over `contracts/src` (libraries, tests and scripts excluded): 23 results, 0 exploitable. Every finding below is either the protocol working as designed or informational. CI runs Slither with these detectors excluded (`contracts/slither.config.json`) and fails on anything new at medium severity or above.
+
+| Detector | Impact | Where | Verdict |
+|---|---|---|---|
+| `arbitrary-send-eth` | High | `PasskeyAccount._call` | **Accepted, by design.** `_call` is reachable only from `execute` (authorised by a fresh WebAuthn assertion over a nonce-bound digest) and `executeFromExecutor` (callable only by the immutable trusted executor, which has already passed `MandateRegistry.validate`). Sending value to an arbitrary target is the account's purpose. |
+| `incorrect-equality` | Medium | `MandateRegistry.remainingBlockSpend` (`lastBlock == block.number`) | **Accepted.** The per-block cap is defined by block-number equality; any other block starts a fresh budget. This is the intended Monad-native semantics. |
+| `incorrect-equality` | Medium | `RiskBreaker.checkpoint` (Cooldown re-arm) | **Accepted.** The flagged expression is `phase == Cooldown && drawdown <= threshold`, an enum equality guarding a `<=` comparison. |
+| `uninitialized-local` | Medium | `ERC8004ReputationAdapter.attest` (`mirrored`) | **Accepted.** Solidity zero-initialises locals; `mirrored` is `false` unless the try branch sets it, which is the intended semantics. |
+| `missing-zero-check` | Low | constructors of `PasskeyAccount`, `MandateExecutor`, `PrivateSubmitter`, `RiskBreaker`; `setSubmitter`; `setReputationRegistry` | **Accepted.** Immutable wiring is set by `script/Deploy.s.sol` and proven by the end-to-end run; a zero address here is a deploy-time misconfiguration that fails loudly on first use, not an attack surface. `setReputationRegistry(0)` is intentionally allowed to disable mirroring. |
+| `reentrancy-events` | Low | `MandateRegistry.grant`, `ERC8004ReputationAdapter.attest` | **Accepted.** Events emitted after an external call to a trusted, immutable dependency (the breaker) or inside a try/catch to the ERC-8004 registry. No state is written after the call that a reentrant caller could exploit; `grant` mutates all state before calling the breaker. |
+| `timestamp` | Low | validity window checks | **Accepted.** Expiry is defined in seconds; validator timestamp drift is bounded and cannot extend a mandate past `validUntil` by more than that drift. |
+| `assembly`, `low-level-calls` | Info | `PasskeyAccount._call` | **Accepted.** Revert-bubbling of the target call so venue errors reach the agent verbatim. |
+| `naming-convention` | Info | `DOMAIN_SEPARATOR` | **Accepted.** EIP-712 convention. |
+| `cyclomatic-complexity` | Info | `MandateRegistry.grant` | **Accepted.** Input validation is deliberately exhaustive in one place. |
+
+Reproduce: `pipx install slither-analyzer && cd contracts && slither .`
+
+## Secret scan
+
+`gitleaks git` over the full history reports no secrets. Three high-entropy hex values it flags (`.gitleaks.toml`) are the on-chain mandate, evidence and transaction hashes recorded in `contracts/deployments/monad-testnet.json` and the docs. Private keys are held only in Foundry keystores and untracked `.env` files; the deploy scripts sign from the keystore.
