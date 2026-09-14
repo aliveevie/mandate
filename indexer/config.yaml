@@ -1,3 +1,52 @@
-# Envio HyperIndex config. Wired in Phase 4.
+# Envio HyperIndex (v3) for the Mandate protocol on Monad testnet.
+# Hosted on Envio Cloud; run `pnpm codegen` after changing this file or schema.graphql.
 name: mandate
-networks: []
+description: Mandates, executions, breaker events and ERC-8004 reputation attestations for the Mandate protocol on Monad.
+ecosystem: evm
+address_format: checksum
+rollback_on_reorg: true
+
+field_selection:
+  transaction_fields:
+    - hash
+
+contracts:
+  - name: MandateRegistry
+    abi_file_path: ./abis/MandateRegistry.json
+    handler: ./src/EventHandlers.ts
+    events:
+      - event: MandateGranted
+      - event: Revoked
+      - event: ExecutionRecorded
+  - name: MandateExecutor
+    abi_file_path: ./abis/MandateExecutor.json
+    handler: ./src/EventHandlers.ts
+    events:
+      - event: MandateExecuted
+  - name: RiskBreaker
+    abi_file_path: ./abis/RiskBreaker.json
+    handler: ./src/EventHandlers.ts
+    events:
+      - event: Armed
+      - event: Tripped
+      - event: CooldownEntered
+      - event: Rearmed
+      - event: PeakReset
+  - name: ERC8004ReputationAdapter
+    abi_file_path: ./abis/ERC8004ReputationAdapter.json
+    handler: ./src/EventHandlers.ts
+    events:
+      - event: ReputationAttested
+
+chains:
+  - id: 10143 # Monad testnet
+    start_block: 62423200
+    contracts:
+      - name: MandateRegistry
+        address: "0x46441BC77a4dDbaE7004943E0ab9cB01c76092fA"
+      - name: MandateExecutor
+        address: "0xbb2d989876BFdf63CDFf7bb480A667175cF12409"
+      - name: RiskBreaker
+        address: "0xf4c2F2373a17e3a2122f984D512B0B2EabA26374"
+      - name: ERC8004ReputationAdapter
+        address: "0x3b1d977C1270dF25252041D0671b6FD90dF7a757"

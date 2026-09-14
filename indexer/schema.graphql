@@ -1,2 +1,112 @@
-# Envio schema. Wired in Phase 4.
-# Events: MandateGranted, MandateExecuted, MandateRevoked, Tripped, ReputationAttested
+# Mandate protocol entities. IDs: Mandate = mandateHash, Principal = account address,
+# Agent = ERC-8004 agentId (decimal string), event rows = "<txHash>-<logIndex>".
+
+enum BreakerPhase {
+  Armed
+  Tripped
+  Cooldown
+}
+
+enum BreakerEventKind {
+  Armed
+  Tripped
+  CooldownEntered
+  Rearmed
+  PeakReset
+}
+
+type Principal {
+  id: ID!
+  mandateCount: Int!
+  activeMandateCount: Int!
+  mandates: [Mandate!]! @derivedFrom(field: "principal")
+}
+
+type Agent {
+  id: ID!
+  agentKey: String!
+  mandateCount: Int!
+  executionCount: Int!
+  tripCount: Int!
+  totalSpent: BigInt!
+  latestScore: Int
+  attestationCount: Int!
+  lastAttestedAt: BigInt
+  mandates: [Mandate!]! @derivedFrom(field: "agent")
+  executions: [Execution!]! @derivedFrom(field: "agent")
+  attestations: [Attestation!]! @derivedFrom(field: "agent")
+}
+
+type Mandate {
+  id: ID!
+  principal: Principal!
+  agent: Agent!
+  agentKey: String!
+  targets: [String!]!
+  selectors: [String!]!
+  asset: String!
+  spendCap: BigInt!
+  perBlockCap: BigInt!
+  maxDrawdownBps: BigInt!
+  validAfter: BigInt!
+  validUntil: BigInt!
+  nonce: BigInt!
+  policyHash: String!
+  spent: BigInt!
+  executionCount: Int!
+  tripCount: Int!
+  breakerPhase: BreakerPhase!
+  peakEquity: BigInt!
+  revoked: Boolean!
+  revokedAt: BigInt
+  revokedTx: String
+  grantedAt: BigInt!
+  grantedBlock: BigInt!
+  grantedTx: String!
+  executions: [Execution!]! @derivedFrom(field: "mandate")
+  breakerEvents: [BreakerEvent!]! @derivedFrom(field: "mandate")
+}
+
+type Execution {
+  id: ID!
+  mandate: Mandate!
+  agent: Agent!
+  agentKey: String!
+  target: String!
+  selector: String!
+  declaredAmount: BigInt!
+  spent: BigInt!
+  phaseAfter: BreakerPhase!
+  block: BigInt!
+  timestamp: BigInt!
+  tx: String!
+}
+
+type BreakerEvent {
+  id: ID!
+  mandate: Mandate!
+  agent: Agent!
+  kind: BreakerEventKind!
+  drawdownBps: BigInt
+  peakEquity: BigInt
+  block: BigInt!
+  timestamp: BigInt!
+  tx: String!
+}
+
+type Attestation {
+  id: ID!
+  agent: Agent!
+  attestor: String!
+  complianceScore: Int!
+  tripCount: Int!
+  executedCount: Int!
+  realisedPnlBps: BigInt!
+  windowStart: BigInt!
+  windowEnd: BigInt!
+  evidenceHash: String!
+  mirrored: Boolean!
+  block: BigInt!
+  timestamp: BigInt!
+  tx: String!
+}
