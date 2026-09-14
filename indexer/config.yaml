@@ -41,6 +41,11 @@ contracts:
 chains:
   - id: 10143 # Monad testnet
     start_block: 62423200
+    # Sync over the public RPC so the indexer runs without an Envio API token. On Envio Cloud a token is
+    # present; change `for: sync` to `for: fallback` there to sync over HyperSync and keep RPC as backup.
+    rpc:
+      - url: https://testnet-rpc.monad.xyz
+        for: sync
     contracts:
       - name: MandateRegistry
         address: "0x46441BC77a4dDbaE7004943E0ab9cB01c76092fA"
