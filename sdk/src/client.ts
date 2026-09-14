@@ -38,8 +38,13 @@ export interface MandateClient {
 
 export function createMandateClient(config: MandateClientConfig = {}): MandateClient {
   const chain = config.chain ?? monadTestnet;
-  const transport = config.transport ?? http(config.rpcUrl);
-  const publicClient: PublicClient<Transport, Chain> = createPublicClient({ chain, transport });
+  // Batch concurrent JSON-RPC calls into one request and reads into multicall: public RPCs rate-limit per request.
+  const transport = config.transport ?? http(config.rpcUrl, { batch: true, retryCount: 3, retryDelay: 400 });
+  const publicClient: PublicClient<Transport, Chain> = createPublicClient({
+    chain,
+    transport,
+    batch: chain.contracts?.multicall3 ? { multicall: { wait: 16 } } : undefined,
+  });
 
   const defaults = config.addresses && isComplete(config.addresses) ? undefined : addressesFor(chain.id);
   const addresses: MandateAddresses = { ...(defaults ?? ({} as MandateAddresses)), ...config.addresses } as MandateAddresses;

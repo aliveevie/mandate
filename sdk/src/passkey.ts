@@ -257,6 +257,19 @@ export function createPasskeyModule(deps: PasskeyModuleDeps) {
 
   return {
     /**
+     * Create only the key (no transaction). Use when a relayer deploys the account: send `publicKey`
+     * to your server, then `attach(key, address)` and `save(principal)`.
+     */
+    async createKey(opts: WebAuthnCreateOptions & { software?: boolean }): Promise<PasskeySigner & { rpId: string }> {
+      return opts.software ? SoftwarePasskey.create(opts.rpId) : WebAuthnPasskey.create(opts);
+    },
+
+    /** Persist a principal for `load()`. */
+    async save(principal: Principal, opts: { storageKey?: string } = {}): Promise<void> {
+      await persist(principal, opts.storageKey);
+    },
+
+    /**
      * Create a passkey (Face ID / Touch ID in the browser, WebCrypto with `software: true`),
      * deploy its PasskeyAccount and persist the principal for `load()`.
      */

@@ -258,6 +258,27 @@ export function createMandateModule(deps: MandateModuleDeps) {
       });
     },
 
+    /** Digest the passkey must sign to revoke `hash` from `account` (uses the account's current nonce). */
+    async revokeDigest(account: Address, hash: Hex): Promise<Hex> {
+      const acc = getContract({ address: account, abi: PasskeyAccountAbi, client: deps.publicClient });
+      return acc.read.revokeDigest([hash, await acc.read.nonce()]);
+    },
+
+    /** Relayer path: submit a revoke that the passkey already signed (see `revokeDigest`). */
+    async revokeWithSignature(account: Address, hash: Hex, signature: Hex, opts: { signer?: Signer } = {}): Promise<TxResult> {
+      const wallet = resolveWallet(opts.signer ?? deps.signer, deps.publicClient, deps.rpcUrl);
+      return rethrowTyped(async () => {
+        const { request } = await deps.publicClient.simulateContract({
+          address: account,
+          abi: PasskeyAccountAbi,
+          functionName: "revokeMandate",
+          args: [hash, signature],
+          account: wallet.account,
+        });
+        return waitTx(deps.publicClient, await wallet.writeContract(request));
+      });
+    },
+
     /** Read a stored mandate. Throws MandateError("MandateNotFound") if unknown. */
     async get(hash: Hex): Promise<Mandate> {
       return rethrowTyped(async () => {

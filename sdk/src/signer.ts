@@ -15,7 +15,7 @@ export function resolveWallet(signer: Signer | undefined, publicClient: MandateP
   return createWalletClient({
     account: signer as Account,
     chain: publicClient.chain,
-    transport: rpcUrl ? http(rpcUrl) : http(),
+    transport: http(rpcUrl, { batch: true, retryCount: 3, retryDelay: 400 }),
   });
 }
 
