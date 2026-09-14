@@ -1,0 +1,40 @@
+{
+  "chainId": 10143,
+  "network": "monad-testnet",
+  "rpc": "https://testnet-rpc.monad.xyz",
+  "explorer": "https://testnet.monadexplorer.com",
+  "deployedAt": "2026-09-14",
+  "deployer": "0x61c780065C2F803588201F4469b2F80484da448f",
+  "submitterMode": "BTX",
+  "contracts": {
+    "MandateRegistry": { "address": "0x46441BC77a4dDbaE7004943E0ab9cB01c76092fA", "tx": "0x45d43b0e7858ccc7126224a2c8328b8b3812d10f51a934b3e30411bdb4c4d9fd" },
+    "RiskBreaker": { "address": "0xf4c2F2373a17e3a2122f984D512B0B2EabA26374", "tx": "0x1f16e701ed354772b26acac1dfa2c0fda0e6cb501f7c8d09ab8142dfb73f11ad", "cooldownBlocks": 50, "rearmFactorBps": 5000 },
+    "MandateExecutor": { "address": "0xbb2d989876BFdf63CDFf7bb480A667175cF12409", "tx": "0x9d4aaba15e96cbf8f858465e2c78c06a9022975b51b6088e6ab068424671d68a" },
+    "PrivateSubmitter": { "address": "0xC552018AA7A9001e1dEcdfe40dAe38Dd6C5ca9D9", "tx": "0xdaccdf34cf6a480b2df7ab58b7f0bc13ab407dcf5e377b8a7050eeed1ecab7fd" },
+    "ERC8004ReputationAdapter": { "address": "0x3b1d977C1270dF25252041D0671b6FD90dF7a757", "tx": "0xfbaa87df536aa3337435ca96d0e86b04621b343acd1bbcb34fac4523aa41e2ca", "attestor": "0x61c780065C2F803588201F4469b2F80484da448f" }
+  },
+  "external": {
+    "P256Precompile": "0x0000000000000000000000000000000000000100",
+    "ERC8004IdentityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    "ERC8004ReputationRegistry": "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+    "demoAgentId": 1831,
+    "demoAgentRegisterTx": "0x8b736f886cbeb6185b9b4f5a02be66a06a863a562e32b129a209716b4662a74e",
+    "adapterWiredTx": "0x9cccff0763d53b3dde9b6fc9e644f28da3cbe10c656782ebc77071119e76e448",
+    "firstMirroredAttestationTx": "0x38343572bd1dec6d1917b46e5a2607f83c1b9724427a5b380826a96acd742efe"
+  },
+  "e2e": {
+    "script": "script/E2E.s.sol",
+    "passkeyAccount": "0x53B06edA0aB9C620C1883d96FC1914de9cE323E1",
+    "mockAsset": "0x918598c87e38A6CB6C08684712A784A2FfFD3731",
+    "mockVenue": "0x3eC5A0C8a382AABfD765FA574C8aCc1C02e37216",
+    "mandateHash": "0x93d8c4c9a71f7228a6593df4d1aaac67ce0bd7d62d5e1c4b3097b4b90f7abf5c",
+    "txs": {
+      "passkeyExecuteApprove": "0x8325b8c465657e32ec918f51c57ec8713a7a6bb2829f2343cd1643abcd693950",
+      "grant": "0x04195aca2b1035850a56883946bf0e9ee8a9832f43fca5e9574a7b4f9c05ab1d",
+      "agentExecuteInBounds": "0x7ec4c3ead4f3e83c2a5963843edd930a4645f521486627d6b339fed525fe87cf",
+      "agentExecuteTripsBreaker": "0x83fe1f1658260c3802254b82c2acbc90d9997f1294728b4dccb4bf72ebd085ee",
+      "passkeyRevoke": "0xad4599dd3fdc73965f9479fe327f42cd2eb247b66b039d4fd48a2133959d286c",
+      "attest": "0xf149f2878cfc0feafbf043fa20763c612675a5f23db1b8f293a1e93b40968704"
+    }
+  }
+}

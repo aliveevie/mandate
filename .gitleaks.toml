@@ -1,0 +1,23 @@
+# Gitleaks config. Everything allowlisted here is a public on-chain value (mandate hashes, tx hashes,
+# evidence hashes, bytes32 test constants), never key material. Real keys live in Foundry keystores and .env files.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public chain data and test vectors that look like high-entropy secrets"
+paths = [
+  '''contracts/deployments/.*\.json''',
+  '''contracts/broadcast/.*''',
+  '''docs/.*\.md''',
+  '''sdk/README\.md''',
+  '''sdk/src/abi/generated\.ts''',
+  '''indexer/abis/.*\.json''',
+  '''pnpm-lock\.yaml''',
+]
+regexes = [
+  # 32-byte hex values used as hashes / typehashes / P256 curve order in source and tests
+  '''(mandateHash|evidenceHash|tx|hash|Tx|policyHash|TYPEHASH|P256_N|MANDATE_TYPEHASH)['"]?\s*[:=]\s*['"]?0x[0-9a-fA-F]{64}''',
+  # anvil's well-known default dev keys used only in local tests
+  '''0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80''',
+  '''0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d''',
+]

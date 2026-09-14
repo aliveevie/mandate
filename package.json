@@ -3,7 +3,14 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "dev": "echo 'not wired yet'",
-    "build": "echo 'not wired yet'"
+    "build": "pnpm --filter @ibxlab/mandate build && pnpm --filter web build && pnpm --filter server build",
+    "dev": "pnpm --filter @ibxlab/mandate build && pnpm -r --parallel --filter web --filter server dev",
+    "test": "pnpm --filter @ibxlab/mandate test"
+  },
+  "pnpm": {
+    "neverBuiltDependencies": [
+      "utf-8-validate",
+      "bufferutil"
+    ]
   }
 }

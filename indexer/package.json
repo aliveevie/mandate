@@ -1,5 +1,18 @@
 {
   "name": "@ibxlab/mandate-indexer",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "type": "module",
+  "description": "Envio HyperIndex for the Mandate protocol on Monad (hosted on Envio Cloud).",
+  "scripts": {
+    "codegen": "envio codegen",
+    "dev": "envio dev",
+    "start": "envio start",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "envio": "^3.10.0",
+    "typescript": "^5.7.2"
+  }
 }

@@ -33,7 +33,6 @@ yarn-error.log
 contracts/cache/
 contracts/out/
 contracts/broadcast/
-contracts/lib/
 lcov.info
 coverage/
 
@@ -58,3 +57,6 @@ Thumbs.db
 
 # --- docker ---
 *.tar
+contracts/deployments/local.json
+site/
+apps/web/e2e/*.png

@@ -1,0 +1,428 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "reputationRegistry_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "attestor_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "attest",
+    "inputs": [
+      {
+        "name": "agentId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "a",
+        "type": "tuple",
+        "internalType": "struct IERC8004ReputationAdapter.Attestation",
+        "components": [
+          {
+            "name": "complianceScore",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "tripCount",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "executedCount",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "realisedPnlBps",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "windowStart",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "windowEnd",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "evidenceHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "attestationAt",
+    "inputs": [
+      {
+        "name": "agentId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct IERC8004ReputationAdapter.Attestation",
+        "components": [
+          {
+            "name": "complianceScore",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "tripCount",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "executedCount",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "realisedPnlBps",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "windowStart",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "windowEnd",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "evidenceHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "attestationCount",
+    "inputs": [
+      {
+        "name": "agentId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "attestor",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "latest",
+    "inputs": [
+      {
+        "name": "agentId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "a",
+        "type": "tuple",
+        "internalType": "struct IERC8004ReputationAdapter.Attestation",
+        "components": [
+          {
+            "name": "complianceScore",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "tripCount",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "executedCount",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "realisedPnlBps",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "windowStart",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "windowEnd",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "evidenceHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "reputationRegistry",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setAttestor",
+    "inputs": [
+      {
+        "name": "attestor_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setReputationRegistry",
+    "inputs": [
+      {
+        "name": "reputationRegistry_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "AttestorSet",
+    "inputs": [
+      {
+        "name": "attestor",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MirrorFailed",
+    "inputs": [
+      {
+        "name": "agentId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reason",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReputationAttested",
+    "inputs": [
+      {
+        "name": "agentId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "attestor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "complianceScore",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "tripCount",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      },
+      {
+        "name": "executedCount",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      },
+      {
+        "name": "realisedPnlBps",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      },
+      {
+        "name": "windowStart",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "windowEnd",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "evidenceHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "mirrored",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReputationRegistrySet",
+    "inputs": [
+      {
+        "name": "reputationRegistry",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "InvalidScore",
+    "inputs": [
+      {
+        "name": "complianceScore",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidWindow",
+    "inputs": [
+      {
+        "name": "windowStart",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "windowEnd",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotAttestor",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  }
+]

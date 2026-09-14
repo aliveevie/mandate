@@ -9,24 +9,28 @@ services:
       - key: PORT
         value: "8787"
       - key: MONAD_RPC_URL
-        sync: false
+        value: https://testnet-rpc.monad.xyz
       - key: MONAD_CHAIN_ID
-        sync: false
+        value: "10143"
+      # Deployed addresses default to the SDK's Monad testnet deployment; override only for a redeploy.
       - key: MANDATE_REGISTRY
         sync: false
       - key: MANDATE_EXECUTOR
+        sync: false
+      - key: RISK_BREAKER
         sync: false
       - key: ERC8004_IDENTITY_REGISTRY
         sync: false
       - key: ERC8004_REPUTATION_ADAPTER
         sync: false
+      # Hosted Envio GraphQL endpoint (optional; enriches the reputation screen)
       - key: ENVIO_GRAPHQL_URL
         sync: false
+      # Privy (feat/privy PR)
       - key: PRIVY_APP_ID
         sync: false
       - key: PRIVY_APP_SECRET
         sync: false
+      # Funded Monad testnet key: pays gas for account deployment, grants, revokes, agent funding. Never a user key.
       - key: DEMO_AGENT_DEPLOYER_KEY
-        sync: false
-      - key: VITE_RP_ID
         sync: false
