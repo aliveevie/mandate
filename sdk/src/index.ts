@@ -41,6 +41,7 @@ export {
   ERC8004ReputationAdapterAbi,
   ERC8004ReputationRegistryAbi,
   ERC8004IdentityRegistryAbi,
+  PasskeyAccountBytecode,
 } from "./abi/generated.js";
 
 export type * from "./types.js";
