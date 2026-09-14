@@ -2,13 +2,87 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/**]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  placeholder:
+  contracts:
+    name: contracts · forge test (invariants at CI profile)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Scaffold only
-        run: echo "CI jobs land in Phase 9 (forge test, sdk build, secret scan)."
+        with: { submodules: recursive }
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge --version
+      - run: forge fmt --check
+        working-directory: contracts
+      - run: forge build --sizes
+        working-directory: contracts
+      - run: forge test -vv
+        working-directory: contracts
+        env: { FOUNDRY_PROFILE: ci }
+
+  sdk:
+    name: sdk · typecheck, build, e2e on anvil
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: forge build
+        working-directory: contracts
+      - run: pnpm --filter @ibxlab/mandate sync-abi && git diff --exit-code sdk/src/abi/generated.ts
+      - run: pnpm --filter @ibxlab/mandate typecheck
+      - run: pnpm --filter @ibxlab/mandate build
+      - run: pnpm --filter @ibxlab/mandate test
+
+  apps:
+    name: apps · indexer typecheck, web + server build, docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ibxlab/mandate build
+      - run: pnpm --filter @ibxlab/mandate-indexer codegen && pnpm --filter @ibxlab/mandate-indexer typecheck
+      - run: pnpm --filter web build
+      - run: pnpm --filter server typecheck && pnpm --filter server build
+      - run: docker build -t mandate-reference:ci .
+
+  security:
+    name: security · gitleaks + slither
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0, submodules: recursive }
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install slither-analyzer
+      - run: slither . --filter-paths "lib/|test/|script/" --exclude-dependencies --fail-high
+        working-directory: contracts
+
+  docs:
+    name: docs · mkdocs strict build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r docs/requirements.txt
+      - run: mkdocs build --strict
