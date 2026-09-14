@@ -1,0 +1,54 @@
+site_name: Mandate
+site_description: A delegation and trust primitive for the agent economy on Monad.
+site_url: https://aliveevie.github.io/mandate/
+repo_url: https://github.com/aliveevie/mandate
+repo_name: aliveevie/mandate
+edit_uri: edit/main/docs/
+docs_dir: docs
+strict: true
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.footer
+    - content.code.copy
+    - content.tabs.link
+    - search.suggest
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+
+nav:
+  - Overview: index.md
+  - Quickstart: quickstart.md
+  - Concepts: concepts.md
+  - Contracts: contracts.md
+  - Indexer: indexer.md
+  - Security: security.md
+  - Integrations: integrations.md
