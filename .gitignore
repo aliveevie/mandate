@@ -33,7 +33,6 @@ yarn-error.log
 contracts/cache/
 contracts/out/
 contracts/broadcast/
-contracts/lib/
 lcov.info
 coverage/
 
