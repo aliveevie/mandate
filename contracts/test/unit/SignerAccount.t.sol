@@ -57,12 +57,20 @@ contract SignerAccountTest is BaseTest {
 
     function test_execute_typedData_andNonceReplay() public {
         ISignerAccount.Call memory c = ISignerAccount.Call({
-            target: address(asset), value: 0, data: abi.encodeWithSignature("approve(address,uint256)", address(venue), 1e18)
+            target: address(asset),
+            value: 0,
+            data: abi.encodeWithSignature("approve(address,uint256)", address(venue), 1e18)
         });
         bytes32 d = acct.executeDigest(c, 0);
         // digest is EIP-712: \x19\x01 || domainSeparator || structHash
         bytes32 structHash = keccak256(
-            abi.encode(keccak256("Execute(address target,uint256 value,bytes data,uint256 nonce)"), c.target, c.value, keccak256(c.data), uint256(0))
+            abi.encode(
+                keccak256("Execute(address target,uint256 value,bytes data,uint256 nonce)"),
+                c.target,
+                c.value,
+                keccak256(c.data),
+                uint256(0)
+            )
         );
         assertEq(d, keccak256(abi.encodePacked("\x19\x01", acct.domainSeparator(), structHash)));
 

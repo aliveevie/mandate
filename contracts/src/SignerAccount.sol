@@ -53,7 +53,8 @@ contract SignerAccount is ISignerAccount {
     }
 
     function executeDigest(Call calldata call, uint256 nonce_) public view override returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(EXECUTE_TYPEHASH, call.target, call.value, keccak256(call.data), nonce_));
+        bytes32 structHash =
+            keccak256(abi.encode(EXECUTE_TYPEHASH, call.target, call.value, keccak256(call.data), nonce_));
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash));
     }
 
