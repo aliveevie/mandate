@@ -241,8 +241,7 @@ async function tick(a: DemoAgent) {
       push(a, { at: Date.now(), kind: "rejected", message: e.message, error: err, mandateHash: a.mandateHash });
       if (TERMINAL.has(e.name)) stop(a, `Frozen by ${e.name}`);
     } else {
-      const msg = (e as Error).message ?? String(e);
-      push(a, { at: Date.now(), kind: "rejected", message: msg.split("\n")[0]!.slice(0, 200), mandateHash: a.mandateHash });
+      push(a, { at: Date.now(), kind: "rejected", message: rootMessage(e), mandateHash: a.mandateHash });
     }
   } finally {
     a.busy = false;
@@ -320,6 +319,17 @@ async function computeAgentState(a: DemoAgent, hash?: Hex) {
       drawdownBps: state.drawdownBps.toString(),
     },
   };
+}
+
+/** The innermost cause's message: viem wraps signer errors (e.g. a Privy policy refusal) several layers deep. */
+function rootMessage(e: unknown): string {
+  let x = e as { cause?: unknown; message?: string; details?: string; shortMessage?: string } | undefined;
+  let msg = x?.message ?? String(e);
+  while (x?.cause) {
+    x = x.cause as typeof x;
+    if (x?.message) msg = x.message;
+  }
+  return (x?.details ?? msg).split("\n")[0]!.slice(0, 300);
 }
 
 function min(...xs: bigint[]) {
