@@ -58,6 +58,8 @@ export function buildMandatePolicy(input: {
   mandateHash: Hex;
   chainId: number;
   executor: Address;
+  /** Optionally allow plain native transfers back to whoever funded the agent's gas (and to nobody else). */
+  refundTo?: Address;
   name?: string;
 }): MandatePolicy {
   const targets = [...new Set(input.mandate.targets.map((t) => t.toLowerCase()))];
@@ -66,6 +68,7 @@ export function buildMandatePolicy(input: {
     name: input.name ?? `mandate ${input.mandateHash.slice(0, 10)}`,
     chain_type: "ethereum",
     rules: [
+      ...refundRules(input.chainId, input.refundTo),
       // Server wallets used through viem sign with eth_signTransaction (then we broadcast); Privy-broadcast
       // flows use eth_sendTransaction. Both are allowed under identical conditions and nothing else is.
       ...(["eth_signTransaction", "eth_sendTransaction"] as const).map((method) => ({
@@ -90,9 +93,33 @@ export function buildMandatePolicy(input: {
   };
 }
 
-/** Replacement rules once the mandate is revoked: the key can do nothing at all. */
-export function revokedPolicyRules(): PolicyRule[] {
-  return [{ name: "Mandate revoked", method: "*", action: "DENY", conditions: [] }];
+/** Plain native transfers to the funder only (no calldata), so unspent gas can be returned. */
+function refundRules(chainId: number, refundTo?: Address): PolicyRule[] {
+  if (!refundTo) return [];
+  return (["eth_signTransaction", "eth_sendTransaction"] as const).map((method) => ({
+    name: `Return gas to funder (${method})`,
+    method,
+    action: "ALLOW" as const,
+    conditions: [
+      { field_source: "ethereum_transaction", field: "to", operator: "eq", value: refundTo.toLowerCase() },
+      { field_source: "ethereum_transaction", field: "chain_id", operator: "eq", value: String(chainId) },
+    ],
+  }));
+}
+
+/**
+ * Replacement rules once the mandate is revoked: the key can do nothing, except return unspent gas to its
+ * funder when `refundTo` is given. Ordering matters for readability only; DENY always wins in Privy.
+ */
+export function revokedPolicyRules(input: { chainId: number; refundTo?: Address } = { chainId: 0 }): PolicyRule[] {
+  const refund = refundRules(input.chainId, input.refundTo);
+  if (refund.length === 0) return [{ name: "Mandate revoked", method: "*", action: "DENY", conditions: [] }];
+  return [
+    ...refund,
+    { name: "Mandate revoked: no message signing", method: "personal_sign", action: "DENY", conditions: [] },
+    { name: "Mandate revoked: no typed-data signing", method: "eth_signTypedData_v4", action: "DENY", conditions: [ANY_TYPED_DATA] },
+    { name: "Mandate revoked: no key export", method: "exportPrivateKey", action: "DENY", conditions: [] },
+  ];
 }
 
 /**
@@ -151,9 +178,13 @@ export interface PrivyIntegration {
     /** A viem account backed by the server wallet, for `client.agent.load({ executor })`. */
     account(ref: PrivyWalletRef): Account;
     /** Create the mirror policy for a granted mandate and attach it to the agent wallet. */
-    mirrorMandate(input: { wallet: PrivyWalletRef; mandate: Mandate; mandateHash: Hex }): Promise<{ policyId: string; policy: MandatePolicy }>;
-    /** After an on-chain revoke: the wallet's policy becomes deny-all. */
-    revokeMirror(input: { policyId: string; mandateHash: Hex }): Promise<void>;
+    mirrorMandate(input: { wallet: PrivyWalletRef; mandate: Mandate; mandateHash: Hex; refundTo?: Address }): Promise<{ policyId: string; policy: MandatePolicy }>;
+    /** After an on-chain revoke: the wallet's policy becomes deny-all (optionally still allowing gas refunds to the funder). */
+    revokeMirror(input: { policyId: string; mandateHash: Hex; refundTo?: Address }): Promise<void>;
+    /** Every wallet owned by our key quorum (for operations such as sweeping unspent gas). */
+    listWallets(): Promise<(PrivyWalletRef & { policyIds: string[] })[]>;
+    /** Replace a wallet's policy with the revoked (deny-all, refund-only) rules. */
+    setRevokedPolicy(input: { policyId: string; refundTo: Address }): Promise<void>;
     /** Ask Privy to sign something the policy forbids. Resolves with the refusal; never lands on-chain when the policy holds. */
     probe(input: { wallet: PrivyWalletRef; to: Address }): Promise<{ blocked: boolean; reason?: string; hash?: Hex }>;
   };
@@ -216,18 +247,29 @@ export async function createPrivyIntegration(cfg: PrivyIntegrationConfig): Promi
       account(ref) {
         return viemMod.createViemAccount(client, { walletId: ref.walletId, address: ref.address, authorizationContext: authorization_context }) as unknown as Account;
       },
-      async mirrorMandate({ wallet, mandate, mandateHash }) {
-        const policy = buildMandatePolicy({ mandate, mandateHash, chainId: cfg.chainId, executor: cfg.addresses.executor });
+      async mirrorMandate({ wallet, mandate, mandateHash, refundTo }) {
+        const policy = buildMandatePolicy({ mandate, mandateHash, chainId: cfg.chainId, executor: cfg.addresses.executor, refundTo });
         const policyId = await createPolicy(policy);
         await client.wallets().update(wallet.walletId, { policy_ids: [policyId], authorization_context } as never);
         return { policyId, policy };
       },
-      async revokeMirror({ policyId, mandateHash }) {
+      async revokeMirror({ policyId, mandateHash, refundTo }) {
         await client.policies().update(policyId, {
           name: `mandate ${mandateHash.slice(0, 10)} (revoked)`,
-          rules: revokedPolicyRules() as never,
+          rules: revokedPolicyRules({ chainId: cfg.chainId, refundTo }) as never,
           authorization_context,
         } as never);
+      },
+      async listWallets() {
+        const out: (PrivyWalletRef & { policyIds: string[] })[] = [];
+        const page = await client.wallets().list({ chain_type: "ethereum", limit: 100 } as never);
+        for await (const w of page as AsyncIterable<{ id: string; address: string; owner_id: string | null; policy_ids: string[] }>) {
+          if (w.owner_id === cfg.keyQuorumId) out.push({ walletId: w.id, address: w.address as Address, policyIds: w.policy_ids ?? [] });
+        }
+        return out;
+      },
+      async setRevokedPolicy({ policyId, refundTo }) {
+        await client.policies().update(policyId, { name: "mandate (revoked)", rules: revokedPolicyRules({ chainId: cfg.chainId, refundTo }) as never, authorization_context } as never);
       },
       async probe({ wallet, to }) {
         try {

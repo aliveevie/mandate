@@ -45,6 +45,17 @@ describe("Privy policy mirrors a mandate", () => {
   it("revoked rules deny everything", () => {
     expect(revokedPolicyRules()).toEqual([{ name: "Mandate revoked", method: "*", action: "DENY", conditions: [] }]);
   });
+
+  it("with a funder, the mirror and the revoked policy allow plain transfers back to the funder only", () => {
+    const funder = "0x61c780065C2F803588201F4469b2F80484da448f" as Address;
+    const p = buildMandatePolicy({ mandate: { targets: [venue], perBlockCap: 1n, validUntil: 2n }, mandateHash: hash, chainId: 10143, executor, refundTo: funder });
+    const refund = p.rules.filter((r) => r.name.startsWith("Return gas"));
+    expect(refund.map((r) => r.method).sort()).toEqual(["eth_sendTransaction", "eth_signTransaction"]);
+    expect(refund[0]!.conditions).toContainEqual({ field_source: "ethereum_transaction", field: "to", operator: "eq", value: funder.toLowerCase() });
+    const revoked = revokedPolicyRules({ chainId: 10143, refundTo: funder });
+    expect(revoked.filter((r) => r.action === "ALLOW")).toHaveLength(2);
+    expect(revoked.filter((r) => r.action === "DENY").map((r) => r.method).sort()).toEqual(["eth_signTypedData_v4", "exportPrivateKey", "personal_sign"]);
+  });
 });
 
 describe("Session signer scope policy", () => {

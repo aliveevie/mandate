@@ -345,7 +345,7 @@ function fmt(x: bigint) {
 export async function mirrorPolicy(mandateHash: Hex, mandate: Mandate): Promise<DemoAgent["policy"] | undefined> {
   const a = await agentForMandate(mandateHash);
   if (!a || !privy || !a.privyWallet) return undefined;
-  const { policyId, policy } = await privy.agents.mirrorMandate({ wallet: a.privyWallet, mandate, mandateHash });
+  const { policyId, policy } = await privy.agents.mirrorMandate({ wallet: a.privyWallet, mandate, mandateHash, refundTo: a.fundedBy });
   a.policy = { policyId, mandateHash, rules: policy.rules, revoked: false };
   push(a, { at: Date.now(), kind: "info", message: `Privy policy ${policyId} now mirrors this mandate on the agent wallet`, mandateHash });
   return a.policy;
@@ -355,9 +355,9 @@ export async function mirrorPolicy(mandateHash: Hex, mandate: Mandate): Promise<
 export async function revokePolicy(mandateHash: Hex): Promise<void> {
   const a = await agentForMandate(mandateHash).catch(() => undefined);
   if (!a || !privy || !a.policy || a.policy.mandateHash !== mandateHash || a.policy.revoked) return;
-  await privy.agents.revokeMirror({ policyId: a.policy.policyId, mandateHash });
+  await privy.agents.revokeMirror({ policyId: a.policy.policyId, mandateHash, refundTo: a.fundedBy });
   a.policy.revoked = true;
-  push(a, { at: Date.now(), kind: "info", message: `Privy policy ${a.policy.policyId} set to deny-all after revocation`, mandateHash });
+  push(a, { at: Date.now(), kind: "info", message: `Privy policy ${a.policy.policyId} set to deny-all after revocation (gas refunds to the funder still allowed)`, mandateHash });
 }
 
 /** Ask Privy to sign a transaction the policy forbids (a plain transfer). The refusal is the proof. */
