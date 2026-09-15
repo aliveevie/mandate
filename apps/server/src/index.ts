@@ -261,7 +261,8 @@ app.post(
     const { mandateHash } = req.body as { mandateHash?: Hex };
     const a = await resolveAgent(req.params.id, mandateHash);
     if (!a) return json(res, { error: "unknown agent" }, 404);
-    json(res, await probePolicy(a, deployer.address));
+    // A sink that is neither the executor nor the agent's funder: the only things the policy allows.
+    json(res, await probePolicy(a, "0x000000000000000000000000000000000000dEaD"));
   }),
 );
 
