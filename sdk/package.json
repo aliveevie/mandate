@@ -13,12 +13,35 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./privy": {
+      "types": "./dist/privy.d.ts",
+      "import": "./dist/privy.js",
+      "require": "./dist/privy.cjs"
     }
   },
-  "files": ["dist", "README.md"],
-  "publishConfig": { "access": "public" },
-  "repository": { "type": "git", "url": "https://github.com/aliveevie/mandate", "directory": "sdk" },
-  "keywords": ["monad", "erc-8004", "passkey", "webauthn", "agents", "delegation", "session-keys", "viem"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aliveevie/mandate",
+    "directory": "sdk"
+  },
+  "keywords": [
+    "monad",
+    "erc-8004",
+    "passkey",
+    "webauthn",
+    "agents",
+    "delegation",
+    "session-keys",
+    "viem"
+  ],
   "scripts": {
     "sync-abi": "node scripts/sync-abi.mjs",
     "build": "tsup",
@@ -26,8 +49,12 @@
     "test": "vitest run",
     "quickstart": "tsx examples/quickstart.ts"
   },
-  "peerDependencies": { "viem": "^2.21.0" },
+  "peerDependencies": {
+    "viem": "^2.21.0",
+    "@privy-io/node": "^0.34.0"
+  },
   "devDependencies": {
+    "@privy-io/node": "0.34.0",
     "@types/node": "^22.10.0",
     "dotenv": "^16.4.7",
     "tsup": "^8.3.5",
@@ -36,5 +63,12 @@
     "viem": "^2.21.0",
     "vitest": "^2.1.8"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependenciesMeta": {
+    "@privy-io/node": {
+      "optional": true
+    }
+  }
 }

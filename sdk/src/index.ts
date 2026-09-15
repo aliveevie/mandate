@@ -19,13 +19,18 @@ export {
   domainSeparator,
   mandateDomain,
   mandateTypedDataTypes,
+  mandateTypedData,
+  signerAccountTypes,
+  signerAccountDomain,
+  revokeTypedData,
+  executeTypedData,
   flattenTargets,
   toSelector,
   MANDATE_TYPEHASH,
   MANDATE_TYPE_STRING,
 } from "./mandate.js";
 
-export { SoftwarePasskey, WebAuthnPasskey } from "./passkey.js";
+export { SoftwarePasskey, WebAuthnPasskey, SignerPrincipalImpl } from "./passkey.js";
 export type { CreatePrincipalOptions, WebAuthnCreateOptions } from "./passkey.js";
 export type { Agent, AgentLoadOptions, ExecuteParams } from "./agent.js";
 
@@ -37,6 +42,8 @@ export {
   MandateExecutorAbi,
   RiskBreakerAbi,
   PasskeyAccountAbi,
+  SignerAccountAbi,
+  SignerAccountBytecode,
   PrivateSubmitterAbi,
   ERC8004ReputationAdapterAbi,
   ERC8004ReputationRegistryAbi,
