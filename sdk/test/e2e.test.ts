@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPublicClient, createWalletClient, defineChain, encodeFunctionData, http, parseEther, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { ChildProcess } from "node:child_process";
-import { createMandateClient, MandateError, hashMandate, type MandateClient, type Principal } from "../src/index.js";
+import { createMandateClient, MandateError, hashMandate, type MandateClient, type PasskeyPrincipal } from "../src/index.js";
 import { ERC8004ReputationAdapterAbi, MandateRegistryAbi } from "../src/abi/generated.js";
 import { ANVIL_PK, ANVIL_PK_1, ANVIL_RPC, startAnvil, type Fixture } from "./anvil.js";
 import { erc20Abi, venueAbi } from "./demo-abi.js";
@@ -17,7 +17,7 @@ const anvilChain = defineChain({
 let proc: ChildProcess;
 let fx: Fixture;
 let client: MandateClient;
-let principal: Principal;
+let principal: PasskeyPrincipal;
 const relayer = privateKeyToAccount(ANVIL_PK);
 const agentKey = privateKeyToAccount(ANVIL_PK_1);
 const publicClient = createPublicClient({ chain: anvilChain, transport: http(ANVIL_RPC) });
@@ -183,6 +183,40 @@ describe("@ibxlab/mandate end to end (anvil, osaka, real P256 precompile)", () =
     expect(after.erc8004?.value).toBe(88n);
     const history = await client.reputation.history(7);
     expect(history).toHaveLength(1);
+  });
+
+  it("signer principal: embedded-wallet style owner grants, executes and revokes with EIP-712 only", async () => {
+    // The owner is any secp256k1 key; here a viem local account stands in for a Privy embedded wallet.
+    const owner = privateKeyToAccount("0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba");
+    const account = await client.passkey.deploySignerAccount(owner.address);
+    const principal = await client.passkey.attachSigner({
+      address: account,
+      owner: owner.address,
+      signTypedData: (td) => (owner.signTypedData as (a: unknown) => Promise<Hex>)({ domain: td.domain, types: td.types, primaryType: td.primaryType, message: td.message }),
+    });
+    expect(principal.kind).toBe("signer");
+    await relayerWallet.writeContract({ address: fx.asset, abi: erc20Abi, functionName: "mint", args: [account, parseEther("100")] });
+    // owner action via EIP-712 Execute: approve the venue
+    const { SignerAccountAbi } = await import("../src/abi/generated.js");
+    const { executeTypedData } = await import("../src/mandate.js");
+    const call = { target: fx.asset, value: 0n, data: encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [fx.venue, 2n ** 256n - 1n] }) };
+    const nonce = await publicClient.readContract({ address: account, abi: SignerAccountAbi, functionName: "nonce" });
+    const sig = await principal.signTypedData(executeTypedData(account, anvilChain.id, call, nonce));
+    const h1 = await relayerWallet.writeContract({ address: account, abi: SignerAccountAbi, functionName: "execute", args: [call, sig] });
+    expect((await publicClient.waitForTransactionReceipt({ hash: h1 })).status).toBe("success");
+
+    const draft = client.mandate.build({
+      agentId: 9, agentKey: agentKey.address, asset: fx.asset,
+      targets: [{ address: fx.venue, selectors: ["buy(address,uint256)"] }],
+      spendCap: parseEther("50"), perBlockCap: parseEther("50"), validUntil: new Date(Date.now() + 3600_000),
+    });
+    const signed = await client.mandate.sign(draft, principal); // typed-data signature of the Mandate
+    await client.mandate.grant(signed);
+    const agent = client.agent.load({ mandateHash: signed.hash, executor: agentKey });
+    await agent.execute({ target: fx.venue, data: encodeFunctionData({ abi: venueAbi, functionName: "buy", args: [fx.asset, parseEther("10")] }), amount: parseEther("10") });
+    expect((await agent.state()).spent).toBe(parseEther("10"));
+    await client.mandate.revoke(signed.hash, principal); // typed-data Revoke on the SignerAccount domain
+    expect((await client.mandate.state(signed.hash)).revoked).toBe(true);
   });
 
   it("agents cannot self-attest (NotAttestor)", async () => {

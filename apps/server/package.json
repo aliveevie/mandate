@@ -8,10 +8,14 @@
     "build": "tsup",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "e2e": "node e2e/apiflow.mjs"
+    "e2e": "node e2e/apiflow.mjs",
+    "e2e:privy": "node e2e/privy.mjs",
+    "privy:setup": "node scripts/privy-setup.mjs",
+    "privy:sweep": "node scripts/privy-sweep.mjs"
   },
   "dependencies": {
     "@ibxlab/mandate": "workspace:*",
+    "@privy-io/node": "0.34.0",
     "express": "^4.21.2",
     "viem": "^2.21.0"
   },

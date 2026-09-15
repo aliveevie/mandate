@@ -1,7 +1,8 @@
 import { addressesFor, testnetDemo, type MandateAddresses } from "@ibxlab/mandate";
 import type { Address, Hex } from "viem";
 
-const env = (k: string, d?: string) => process.env[k] ?? d;
+// Empty values (placeholders in .env files) count as unset.
+const env = (k: string, d?: string) => process.env[k]?.trim() || d;
 
 export const config = {
   port: Number(env("PORT", "8787")),

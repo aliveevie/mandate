@@ -11,7 +11,7 @@ import {
   type Address,
   type Hex,
 } from "viem";
-import { MandateRegistryAbi, PasskeyAccountAbi, RiskBreakerAbi } from "./abi/generated.js";
+import { MandateRegistryAbi, PasskeyAccountAbi, RiskBreakerAbi, SignerAccountAbi } from "./abi/generated.js";
 import { rethrowTyped } from "./errors.js";
 import { resolveWallet, waitTx } from "./signer.js";
 import type {
@@ -27,6 +27,7 @@ import type {
   Signer,
   TargetSpec,
   TxResult,
+  TypedDataInput,
 } from "./types.js";
 
 // ---------------------------------------------------------------------------------------------
@@ -63,6 +64,57 @@ export const mandateTypedDataTypes = {
 
 export function mandateDomain(chainId: number, registry: Address) {
   return { name: "Mandate", version: "1", chainId, verifyingContract: registry } as const;
+}
+
+/** Typed data for a SignerAccount's owner actions (domain `MandateAccount` v1, verifying contract = the account). */
+export const signerAccountTypes = {
+  Execute: [
+    { name: "target", type: "address" },
+    { name: "value", type: "uint256" },
+    { name: "data", type: "bytes" },
+    { name: "nonce", type: "uint256" },
+  ],
+  Revoke: [
+    { name: "mandateHash", type: "bytes32" },
+    { name: "nonce", type: "uint256" },
+  ],
+} as const;
+
+export function signerAccountDomain(account: Address, chainId: number) {
+  return { name: "MandateAccount", version: "1", chainId, verifyingContract: account } as const;
+}
+
+/** The full EIP-712 payload for a mandate, for wallets and signers that sign typed data. */
+export function mandateTypedData(m: Mandate, chainId: number, registry: Address): TypedDataInput {
+  return {
+    domain: mandateDomain(chainId, registry),
+    types: mandateTypedDataTypes,
+    primaryType: "Mandate",
+    message: { ...m, targets: [...m.targets], selectors: [...m.selectors] },
+  };
+}
+
+export function revokeTypedData(account: Address, chainId: number, mandateHash: Hex, nonce: bigint): TypedDataInput {
+  return {
+    domain: signerAccountDomain(account, chainId),
+    types: { Revoke: signerAccountTypes.Revoke },
+    primaryType: "Revoke",
+    message: { mandateHash, nonce },
+  };
+}
+
+export function executeTypedData(
+  account: Address,
+  chainId: number,
+  call: { target: Address; value: bigint; data: Hex },
+  nonce: bigint,
+): TypedDataInput {
+  return {
+    domain: signerAccountDomain(account, chainId),
+    types: { Execute: signerAccountTypes.Execute },
+    primaryType: "Execute",
+    message: { target: call.target, value: call.value, data: call.data, nonce },
+  };
 }
 
 export function domainSeparator(chainId: number, registry: Address): Hex {
@@ -220,7 +272,11 @@ export function createMandateModule(deps: MandateModuleDeps) {
       const mandate: Mandate = { ...draft, principal: principal.address, nonce };
       const hash = hashMandate(mandate);
       const digest = mandateDigest(mandate, deps.chainId, deps.addresses.registry);
-      const signature = await principal.signChallenge(digest);
+      // Passkeys sign the 32-byte digest as a WebAuthn challenge; signer principals sign the same digest as EIP-712 typed data.
+      const signature =
+        principal.kind === "signer"
+          ? await principal.signTypedData(mandateTypedData(mandate, deps.chainId, deps.addresses.registry))
+          : await principal.signChallenge(digest);
       return { mandate, hash, digest, signature };
     },
 
@@ -242,20 +298,17 @@ export function createMandateModule(deps: MandateModuleDeps) {
     /** Revoke immediately. The passkey authorises; the signer pays gas. */
     async revoke(hash: Hex, principal: Principal, opts: { signer?: Signer } = {}): Promise<TxResult> {
       const wallet = resolveWallet(opts.signer ?? deps.signer, deps.publicClient, deps.rpcUrl);
-      const account = getContract({ address: principal.address, abi: PasskeyAccountAbi, client: deps.publicClient });
-      const nonce = await account.read.nonce();
-      const digest = await account.read.revokeDigest([hash, nonce]);
-      const signature = await principal.signChallenge(digest);
-      return rethrowTyped(async () => {
-        const { request } = await deps.publicClient.simulateContract({
-          address: principal.address,
-          abi: PasskeyAccountAbi,
-          functionName: "revokeMandate",
-          args: [hash, signature],
-          account: wallet.account,
-        });
-        return waitTx(deps.publicClient, await wallet.writeContract(request));
-      });
+      let signature: Hex;
+      if (principal.kind === "signer") {
+        const account = getContract({ address: principal.address, abi: SignerAccountAbi, client: deps.publicClient });
+        const nonce = await account.read.nonce();
+        signature = await principal.signTypedData(revokeTypedData(principal.address, deps.chainId, hash, nonce));
+      } else {
+        const account = getContract({ address: principal.address, abi: PasskeyAccountAbi, client: deps.publicClient });
+        const nonce = await account.read.nonce();
+        signature = await principal.signChallenge(await account.read.revokeDigest([hash, nonce]));
+      }
+      return this.revokeWithSignature(principal.address, hash, signature, opts);
     },
 
     /** Digest the passkey must sign to revoke `hash` from `account` (uses the account's current nonce). */

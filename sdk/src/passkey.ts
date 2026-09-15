@@ -1,14 +1,17 @@
 import { getContract, type Address, type Hex } from "viem";
-import { PasskeyAccountAbi, PasskeyAccountBytecode } from "./abi/generated.js";
+import { PasskeyAccountAbi, PasskeyAccountBytecode, SignerAccountAbi, SignerAccountBytecode } from "./abi/generated.js";
 import { resolveWallet, waitTx } from "./signer.js";
 import type {
   MandateAddresses,
   MandatePublicClient,
+  PasskeyPrincipal,
   PasskeySigner,
   Principal,
   PrincipalStorage,
   Signer,
+  SignerPrincipal,
   StoredPrincipal,
+  TypedDataInput,
 } from "./types.js";
 import {
   base64UrlDecode,
@@ -188,7 +191,23 @@ function defaultStorage(): PrincipalStorage {
   return memoryStorage();
 }
 
-class PrincipalImpl implements Principal {
+/** A SignerAccount principal. `signTypedData` is whatever key controls the account: a wallet, a viem account, or a delegated session signer. */
+export class SignerPrincipalImpl implements SignerPrincipal {
+  readonly kind = "signer" as const;
+  constructor(
+    readonly address: Address,
+    readonly owner: Address,
+    private readonly signer: (td: TypedDataInput) => Promise<Hex>,
+  ) {}
+  signTypedData(td: TypedDataInput) {
+    return this.signer(td);
+  }
+  toJSON(): StoredPrincipal {
+    return { kind: "signer", address: this.address, owner: this.owner };
+  }
+}
+
+class PrincipalImpl implements PasskeyPrincipal {
   constructor(
     private readonly signer: PasskeySigner & { rpId?: string; privateJwk?: JsonWebKey },
     readonly address: Address,
@@ -255,6 +274,21 @@ export function createPasskeyModule(deps: PasskeyModuleDeps) {
     await storage.set(key, JSON.stringify(p.toJSON()));
   }
 
+  /** Deploy a SignerAccount owned by `owner` (an EOA, embedded wallet or ERC-1271 contract). */
+  async function deploySignerAccount(owner: Address, signer?: Signer): Promise<Address> {
+    const wallet = resolveWallet(signer ?? deps.signer, deps.publicClient, deps.rpcUrl);
+    const hash = await wallet.deployContract({
+      abi: SignerAccountAbi,
+      bytecode: SignerAccountBytecode as Hex,
+      args: [owner, deps.addresses.registry, deps.addresses.executor],
+      chain: wallet.chain,
+      account: wallet.account,
+    });
+    const receipt = await deps.publicClient.waitForTransactionReceipt({ hash });
+    if (!receipt.contractAddress) throw new Error("SignerAccount deployment returned no address");
+    return receipt.contractAddress;
+  }
+
   return {
     /**
      * Create only the key (no transaction). Use when a relayer deploys the account: send `publicKey`
@@ -273,7 +307,7 @@ export function createPasskeyModule(deps: PasskeyModuleDeps) {
      * Create a passkey (Face ID / Touch ID in the browser, WebCrypto with `software: true`),
      * deploy its PasskeyAccount and persist the principal for `load()`.
      */
-    async create(opts: CreatePrincipalOptions): Promise<Principal> {
+    async create(opts: CreatePrincipalOptions): Promise<PasskeyPrincipal> {
       const pk = opts.software ? await SoftwarePasskey.create(opts.rpId) : await WebAuthnPasskey.create(opts);
       const address = await deployAccount(pk, opts.signer);
       const principal = new PrincipalImpl(pk, address);
@@ -282,24 +316,29 @@ export function createPasskeyModule(deps: PasskeyModuleDeps) {
     },
 
     /** Load a previously created principal from storage. Returns null if none is stored. */
-    async load(opts: { storageKey?: string } = {}): Promise<Principal | null> {
+    async load(opts: { storageKey?: string } = {}): Promise<PasskeyPrincipal | null> {
       const raw = await storage.get(opts.storageKey ?? STORAGE_KEY);
       if (!raw) return null;
-      return this.fromJSON(JSON.parse(raw) as StoredPrincipal);
+      const stored = JSON.parse(raw) as StoredPrincipal;
+      if (stored.kind === "signer") return null; // needs its external signer; the app re-attaches it
+      return this.fromJSON(stored);
     },
 
     /** Rehydrate a principal from its serialised form. */
-    async fromJSON(stored: StoredPrincipal): Promise<Principal> {
+    async fromJSON(stored: StoredPrincipal): Promise<PasskeyPrincipal> {
+      if (stored.kind === "signer") {
+        throw new Error("Signer principals are restored with attachSigner(address, owner, signTypedData); the signing key lives outside the SDK");
+      }
       if (stored.kind === "software") {
         if (!stored.privateJwk) throw new Error("Stored software principal has no key material");
         return new PrincipalImpl(await SoftwarePasskey.fromJwk(stored.privateJwk, stored.rpId), stored.address);
       }
-      if (!stored.credentialId || !stored.rpId) throw new Error("Stored WebAuthn principal is missing credentialId or rpId");
+      if (!stored.credentialId || !stored.rpId || !stored.publicKey) throw new Error("Stored WebAuthn principal is missing credentialId, rpId or publicKey");
       return new PrincipalImpl(new WebAuthnPasskey(stored.credentialId, stored.publicKey, stored.rpId), stored.address);
     },
 
     /** Attach an already-deployed PasskeyAccount to a signer (for example after a page reload on another device). */
-    async attach(pk: PasskeySigner & { rpId?: string }, address: Address): Promise<Principal> {
+    async attach(pk: PasskeySigner & { rpId?: string }, address: Address): Promise<PasskeyPrincipal> {
       const account = getContract({ address, abi: PasskeyAccountAbi, client: deps.publicClient });
       const [x, y] = await Promise.all([account.read.pubKeyX(), account.read.pubKeyY()]);
       if (x.toLowerCase() !== pk.publicKey.x.toLowerCase() || y.toLowerCase() !== pk.publicKey.y.toLowerCase()) {
@@ -310,6 +349,22 @@ export function createPasskeyModule(deps: PasskeyModuleDeps) {
 
     /** Deploy a PasskeyAccount for an existing passkey signer. */
     deployAccount,
+
+    /** Deploy a SignerAccount for a secp256k1 owner (embedded wallet, EOA, ERC-1271 contract). */
+    deploySignerAccount,
+
+    /**
+     * Bind a deployed SignerAccount to whatever can sign EIP-712 for its owner: a viem account, a wallet
+     * client, or a server-held session signer. Verifies the account's owner on-chain.
+     */
+    async attachSigner(input: { address: Address; owner: Address; signTypedData: (td: TypedDataInput) => Promise<Hex> }): Promise<SignerPrincipal> {
+      const account = getContract({ address: input.address, abi: SignerAccountAbi, client: deps.publicClient });
+      const onchainOwner = await account.read.owner();
+      if (onchainOwner.toLowerCase() !== input.owner.toLowerCase()) {
+        throw new Error("SignerAccount at that address has a different owner");
+      }
+      return new SignerPrincipalImpl(input.address, input.owner, input.signTypedData);
+    },
 
     /** Forget the stored principal. */
     async clear(opts: { storageKey?: string } = {}) {

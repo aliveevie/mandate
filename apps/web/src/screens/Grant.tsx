@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { usePublicClient, useWalletClient } from "wagmi";
 import { ERC8004IdentityRegistryAbi } from "@ibxlab/mandate";
 import { parseAbi, parseEventLogs, type Address as Addr, type Hex } from "viem";
-import { ArrowRight, Bot, Fingerprint, ShieldCheck } from "lucide-react";
+import { ArrowRight, Bot, Fingerprint, ShieldCheck, LockKeyhole, Landmark } from "lucide-react";
 import type { Session } from "../App";
 import { api, type AgentView } from "../lib/api";
 import { getClient } from "../lib/client";
@@ -21,7 +21,7 @@ export default function Grant({ s }: { s: Session }) {
   const [drawdown, setDrawdown] = useState(15);
   const [hours, setHours] = useState(24);
   const [selected, setSelected] = useState<string[]>(SELECTORS);
-  const [result, setResult] = useState<{ mandateHash: `0x${string}`; tx: string } | null>(null);
+  const [result, setResult] = useState<{ mandateHash: `0x${string}`; tx: string; policy?: { policyId: string; rules: { name: string; action: string; method: string }[] } | { error: string } | null } | null>(null);
 
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
@@ -53,6 +53,21 @@ export default function Grant({ s }: { s: Session }) {
     if (!s.principal || !s.agent) return;
     setErr(null); setResult(null); setBusy("sign");
     try {
+      if (s.privyPrincipal) {
+        // Session signer: the server signs the Mandate typed data on the embedded wallet and relays. No prompt.
+        setBusy("relay");
+        const out = await api<{ hash: string; mandateHash: `0x${string}`; policy: { policyId: string; rules: { name: string; action: string; method: string }[] } | { error: string } | null }>("/api/privy/grant", {
+          json: { identityToken: s.privyPrincipal.identityToken(), account: s.privyPrincipal.account, draft: {
+            agentId: s.agent.agentId, agentKey: s.agent.agentKey, targets: [{ address: s.cfg.demo.venue, selectors: selected }], asset: s.cfg.demo.asset,
+            spendCap: (BigInt(spendCap) * 10n ** 18n).toString(), perBlockCap: (BigInt(perBlockCap) * 10n ** 18n).toString(), maxDrawdownBps: drawdown * 100,
+            validUntil: Math.floor(Date.now() / 1000) + hours * 3600,
+          } },
+        });
+        setResult({ mandateHash: out.mandateHash, tx: out.hash, policy: out.policy });
+        s.setMandateHash(out.mandateHash);
+        toast.push({ kind: "ok", title: "Mandate granted via the session signer (no prompt)", detail: out.mandateHash, link: { href: `${s.cfg.explorer}/tx/${out.hash}`, label: "Grant transaction" } });
+        return;
+      }
       const draft = client.mandate.build({
         agentId: BigInt(s.agent.agentId), agentKey: s.agent.agentKey,
         targets: [{ address: s.cfg.demo.venue, selectors: selected }],
@@ -63,7 +78,12 @@ export default function Grant({ s }: { s: Session }) {
       const signed = await client.mandate.sign(draft, s.principal);
       setBusy(s.tx.mode.kind === "wallet" ? "wallet" : "relay");
       const out = await s.tx.grant(signed);
-      setResult({ mandateHash: out.mandateHash, tx: out.hash });
+      // Wallet mode grants on the client; ask the server to mirror the policy onto a Privy-held agent key.
+      let policy: { policyId: string; rules: { name: string; action: string; method: string }[] } | { error: string } | null = (out as { policy?: never }).policy ?? null;
+      if (s.cfg.privy.enabled && s.agent.custody === "privy" && s.tx.mode.kind === "wallet") {
+        policy = (await api<{ policy: typeof policy }>(`/api/mandates/${out.mandateHash}/mirror`, { json: {} }).catch((e) => ({ policy: { error: (e as Error).message } }))).policy;
+      }
+      setResult({ mandateHash: out.mandateHash, tx: out.hash, policy });
       s.setMandateHash(out.mandateHash);
       toast.push({ kind: "ok", title: "Mandate granted", detail: out.mandateHash, link: { href: `${s.cfg.explorer}/tx/${out.hash}`, label: "Grant transaction" } });
     } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
@@ -89,7 +109,7 @@ export default function Grant({ s }: { s: Session }) {
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Stat label="Executing key" value={<Address value={s.agent.agentKey} chars={6} className="text-sm text-white" explorer={`${s.cfg.explorer}/address/${s.agent.agentKey}`} />} sub="signs agent transactions" />
+              <Stat label="Executing key" value={<Address value={s.agent.agentKey} chars={6} className="text-sm text-white" explorer={`${s.cfg.explorer}/address/${s.agent.agentKey}`} />} sub={s.agent.custody === "privy" ? `Privy server wallet ${s.agent.privyWalletId?.slice(0, 10)}…` : "signs agent transactions"} />
               <Stat label="ERC-8004 registration" value={<TxLink hash={s.agent.registerTx} explorer={s.cfg.explorer} />} sub={<button className="hover:text-white" onClick={provision}>{busy === "provision" ? "provisioning…" : "provision another"}</button>} />
             </div>
           )}
@@ -132,7 +152,7 @@ export default function Grant({ s }: { s: Session }) {
             ))}
           </ul>
           <div className="mt-5 space-y-3">
-            <Button size="lg" className="w-full" onClick={grant} disabled={!s.principal || !s.agent || selected.length === 0} busy={!!busyLabel} icon={<Fingerprint className="h-5 w-5" />}>{busyLabel ?? "Sign with passkey & grant"}</Button>
+            <Button size="lg" className="w-full" onClick={grant} disabled={!s.principal || !s.agent || selected.length === 0} busy={!!busyLabel} icon={s.privyPrincipal ? <LockKeyhole className="h-5 w-5" /> : <Fingerprint className="h-5 w-5" />}>{busyLabel ?? (s.privyPrincipal ? "Grant via session signer (no prompt)" : "Sign with passkey & grant")}</Button>
             {!s.principal && <Notice kind="warn">Create a passkey principal first.</Notice>}
             {s.principal && !s.approved && <Notice kind="warn">The venue is not approved yet; the agent's first trade will fail until you approve it on the Passkey step.</Notice>}
             <div className="text-center text-[11px] text-white/40">EIP-712 typed data · domain Mandate v1 · bound to chain {s.cfg.chainId} and the registry</div>
@@ -145,6 +165,18 @@ export default function Grant({ s }: { s: Session }) {
             <div className="mt-2 flex items-center gap-3"><TxLink hash={result.tx} explorer={s.cfg.explorer} /><button className="inline-flex items-center gap-1 text-xs font-semibold text-white hover:underline" onClick={() => s.go("agent")}>Run the agent <ArrowRight className="h-3 w-3" /></button></div>
           </Notice>
         )}
+        {result?.policy && "policyId" in result.policy && (
+          <Card title="Mirrored to the agent wallet" icon={<Landmark className="h-4 w-4" />} className="rise">
+            <p className="mb-3 text-xs leading-relaxed text-white/55">The same limits now exist as a Privy wallet policy on the agent's server wallet. The chain enforces; Privy refuses to sign anything else first.</p>
+            <div className="mono mb-2 text-[11px] text-white/60">policy {result.policy.policyId}</div>
+            <ul className="space-y-1 text-xs">
+              {result.policy.rules.map((r) => (
+                <li key={r.name} className="flex items-center gap-2"><span className={`rounded px-1.5 text-[10px] font-bold ${r.action === "ALLOW" ? "bg-ok/15 text-ok" : "bg-bad/15 text-bad"}`}>{r.action}</span><span className="mono text-white/60">{r.method}</span><span className="text-white/75">{r.name}</span></li>
+              ))}
+            </ul>
+          </Card>
+        )}
+        {result?.policy && "error" in result.policy && <Notice kind="warn">Policy mirror failed: <span className="mono text-xs">{result.policy.error}</span></Notice>}
         {err && <Notice kind="error"><span className="font-semibold">Grant failed.</span> <span className="mono text-xs">{err}</span></Notice>}
       </div>
     </div>

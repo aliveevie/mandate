@@ -8,6 +8,7 @@ import { wagmiConfig } from "./lib/wagmi";
 import { ToastProvider } from "./lib/toast";
 import { makePrincipalTx, type PrincipalTx } from "./lib/tx";
 import { Shell, type Screen } from "./components/Shell";
+import { MaybePrivyProvider } from "./lib/privy";
 import { Notice } from "./components/primitives";
 import Onboard from "./screens/Onboard";
 import Grant from "./screens/Grant";
@@ -26,58 +27,65 @@ export interface Session {
   approved: boolean;
   setApproved: (v: boolean) => void;
   go: (s: Screen) => void;
+  /** Present when the principal is a Privy session-signer principal: the server signs on the user's behalf. */
+  privyPrincipal: { account: `0x${string}`; owner: `0x${string}`; identityToken: () => string | null } | null;
+  setPrivyPrincipal: (p: Session["privyPrincipal"]) => void;
 }
 
 const queryClient = new QueryClient();
 
 export default function App() {
+  const [cfg, setCfg] = useState<PublicConfig | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    api<PublicConfig>("/api/config").then(setCfg).catch((e) => setErr(e.message));
+  }, []);
+  if (err) return <div className="bg-ambient min-h-screen p-8"><Notice kind="error">Server unreachable: {err}</Notice></div>;
+  if (!cfg) return <div className="bg-ambient flex min-h-screen items-center justify-center text-white/50">Loading…</div>;
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          <Inner />
-        </ToastProvider>
+        <MaybePrivyProvider cfg={cfg}>
+          <ToastProvider>
+            <Inner cfg={cfg} />
+          </ToastProvider>
+        </MaybePrivyProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
 }
 
-function Inner() {
+function Inner({ cfg }: { cfg: PublicConfig }) {
   const [screen, setScreen] = useState<Screen>("onboard");
-  const [cfg, setCfg] = useState<PublicConfig | null>(null);
-  const [err, setErr] = useState<string | null>(null);
   const [principal, setPrincipal] = useState<Principal | null>(null);
   const [agent, setAgent] = useState<AgentView | null>(null);
   const [approved, setApproved] = useState(false);
+  const [privyPrincipal, setPrivyPrincipal] = useState<Session["privyPrincipal"]>(null);
   const [mandateHash, setMandateHash] = useState<`0x${string}` | null>(() => (localStorage.getItem("mandate.lastHash") as `0x${string}`) || null);
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
 
   useEffect(() => {
-    api<PublicConfig>("/api/config")
-      .then(async (c) => {
-        setCfg(c);
-        const p = await getClient(c).passkey.load();
-        if (p) setPrincipal(p);
-        const agents = await api<AgentView[]>("/api/agents");
-        const saved = localStorage.getItem("mandate.agentId");
-        setAgent(agents.find((a) => a.id === saved) ?? agents[agents.length - 1] ?? null);
-      })
-      .catch((e) => setErr(e.message));
-  }, []);
+    (async () => {
+      const p = await getClient(cfg).passkey.load();
+      if (p) setPrincipal(p);
+      const agents = await api<AgentView[]>("/api/agents");
+      const saved = localStorage.getItem("mandate.agentId");
+      setAgent(agents.find((a) => a.id === saved) ?? agents[agents.length - 1] ?? null);
+    })().catch(() => {});
+  }, [cfg]);
   useEffect(() => { if (mandateHash) localStorage.setItem("mandate.lastHash", mandateHash); }, [mandateHash]);
   useEffect(() => { if (agent) localStorage.setItem("mandate.agentId", agent.id); }, [agent]);
 
-  const tx = useMemo(() => (cfg && publicClient ? makePrincipalTx(cfg, publicClient, walletClient) : null), [cfg, publicClient, walletClient]);
+  const tx = useMemo(() => (publicClient ? makePrincipalTx(cfg, publicClient, walletClient) : null), [cfg, publicClient, walletClient]);
 
-  if (err) return <div className="bg-ambient min-h-screen p-8"><Notice kind="error">Server unreachable: {err}</Notice></div>;
-  if (!cfg || !tx) return <div className="bg-ambient flex min-h-screen items-center justify-center text-white/50">Loading…</div>;
+  if (!tx) return <div className="bg-ambient flex min-h-screen items-center justify-center text-white/50">Loading…</div>;
 
-  const session: Session = { cfg, tx, principal, setPrincipal, agent, setAgent, mandateHash, setMandateHash, approved, setApproved, go: setScreen };
+  const session: Session = { cfg, tx, principal, setPrincipal, agent, setAgent, mandateHash, setMandateHash, approved, setApproved, go: setScreen, privyPrincipal, setPrivyPrincipal };
   const done: Record<Screen, boolean> = { onboard: !!principal && approved, grant: !!mandateHash, agent: false, reputation: false };
 
   return (
-    <Shell cfg={cfg} screen={screen} go={setScreen} done={done} principalAddr={principal?.address} mode={tx.mode.label}>
+    <Shell cfg={cfg} screen={screen} go={setScreen} done={done} principalAddr={principal?.address} mode={privyPrincipal ? "Privy session signer · no prompts" : tx.mode.label}>
       <div key={screen} className="rise">
         {screen === "onboard" && <Onboard s={session} />}
         {screen === "grant" && <Grant s={session} />}

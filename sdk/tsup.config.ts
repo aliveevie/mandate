@@ -1,12 +1,12 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/privy.ts"],
   format: ["esm", "cjs"],
   dts: true,
   sourcemap: true,
   clean: true,
   treeshake: true,
   target: "es2022",
-  external: ["viem"],
+  external: ["viem", "@privy-io/node", "@privy-io/node/viem"],
 });

@@ -8,6 +8,8 @@ Mandate assumes the agent is untrusted. It may be buggy, compromised, or adversa
 
 **Out of scope, deliberately.** Losses inside a whitelisted call that stay within the caps and the breaker threshold: that is the risk the principal chose. A compromised passkey: the principal's device is the root of trust. A malicious venue draining approvals outside the executor: approvals are the principal's decision, and the breaker still records the drawdown. Liveness of the attestor: a stalled attestor means stale reputation, not stolen funds.
 
+**With Privy configured.** The agent's key is a Privy server wallet: there is no private key on the server to steal, only an authorization key that can ask Privy to sign within policy. The wallet policy is a second, independent statement of the mandate evaluated before a signature exists, so a compromised agent process cannot produce a transaction outside the mandate at all. A user's delegated session signer is scoped by policy to EIP-712 for the Mandate registry and that user's own account; it cannot sign messages, transactions or other domains, and the user can revoke the delegation in Privy at any time. None of this weakens the chain-side guarantees below; it adds a layer in front of them.
+
 ## The seven properties, and where each is proven
 
 | # | Property | Proof |

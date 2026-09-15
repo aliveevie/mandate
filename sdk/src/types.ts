@@ -85,20 +85,46 @@ export interface PasskeySigner {
   signChallenge(challenge: Hex): Promise<Hex>;
 }
 
+/** EIP-712 payload a signer principal is asked to sign. */
+export interface TypedDataInput {
+  domain: { name: string; version: string; chainId: number; verifyingContract: Address };
+  types: Record<string, readonly { name: string; type: string }[]>;
+  primaryType: string;
+  message: Record<string, unknown>;
+}
+
 /** A passkey together with its deployed PasskeyAccount. */
-export interface Principal extends PasskeySigner {
+export interface PasskeyPrincipal extends PasskeySigner {
   /** PasskeyAccount address. */
   readonly address: Address;
   /** Serialisable form (no private material for WebAuthn keys). */
   toJSON(): StoredPrincipal;
 }
 
+/**
+ * A principal whose account is a `SignerAccount` owned by a secp256k1 key: an EOA, an embedded wallet
+ * (optionally with a delegated session signer), or an ERC-1271 contract. Everything it signs is EIP-712.
+ */
+export interface SignerPrincipal {
+  readonly kind: "signer";
+  /** SignerAccount address. */
+  readonly address: Address;
+  /** The owning key (embedded wallet or EOA). */
+  readonly owner: Address;
+  signTypedData(typedData: TypedDataInput): Promise<Hex>;
+  toJSON(): StoredPrincipal;
+}
+
+export type Principal = PasskeyPrincipal | SignerPrincipal;
+
 export interface StoredPrincipal {
-  kind: "webauthn" | "software";
+  kind: "webauthn" | "software" | "signer";
   address: Address;
-  publicKey: { x: Hex; y: Hex };
+  publicKey?: { x: Hex; y: Hex };
   credentialId?: string;
   rpId?: string;
+  /** Signer principals: the owning key. */
+  owner?: Address;
   /** Software keys only: JWK private key. Never present for WebAuthn credentials. */
   privateJwk?: JsonWebKey;
 }

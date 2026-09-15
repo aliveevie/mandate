@@ -23,6 +23,7 @@ export interface PublicConfig {
   relayer: { address: string; balance: string; min: string; low: boolean };
   explorer: string;
   envio: boolean;
+  privy: { enabled: boolean; appId: string | null; signerId: string | null };
 }
 
 export interface AgentView {
@@ -33,6 +34,9 @@ export interface AgentView {
   fundTx: string;
   fundedBy?: string;
   pending?: boolean;
+  custody?: "local" | "privy";
+  privyWalletId?: string;
+  policy?: { policyId: string; mandateHash: string; rules: { name: string; method: string; action: "ALLOW" | "DENY"; conditions: { field_source: string; field: string; operator: string; value: string | string[] }[] }[]; revoked: boolean };
   createdAt: number;
   running: boolean;
   mandateHash?: `0x${string}`;

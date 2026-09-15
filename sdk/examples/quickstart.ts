@@ -27,7 +27,7 @@ const w = createWalletClient({ account: me, chain: monadTestnet, transport: http
 
 // 1. Principal: a passkey and its on-chain PasskeyAccount.
 //    In a browser drop `software: true` and Face ID / Touch ID takes over.
-const principal = (await client.passkey.load()) ?? (await client.passkey.create({ rpId: "quickstart.mandate", software: true }));
+const principal = (await client.passkey.load()) ?? (await client.passkey.create({ rpId: "quickstart.mandate", software: true })); // PasskeyPrincipal
 console.log("principal account", principal.address);
 
 // 2. Fund the account with demo tokens and let it approve the demo venue (owner action, passkey-signed).

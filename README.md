@@ -34,6 +34,10 @@ Four screens: **Passkey** (create a passkey; its smart account is deployed and s
 
 Proofs that run against the live app: `pnpm --filter server e2e` drives the whole flow through the API with a software passkey; `pnpm --filter web e2e` does the same in real Chrome with a WebAuthn virtual authenticator, so `navigator.credentials` and on-chain P256 verification are exercised for real; `WALLET_KEY=0x… node apps/web/e2e/wallet.mjs` runs wallet mode with an injected signing provider and asserts the relayer sent nothing for the principal.
 
+## Privy
+
+With `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` and `PRIVY_KEY_QUORUM_ID` set on the server, agent keys become Privy server wallets, every granted mandate is mirrored as a wallet policy on the agent wallet (deny-all after revocation), and users without a passkey device can sign in with Privy and delegate a scoped session signer so granting and revoking never prompt. See `docs/integrations.md#privy`. `pnpm --filter server e2e:privy` proves all of it against the live server.
+
 ## Security and CI
 
 `docs/security.md` holds the threat model, the seven tested properties and the Slither triage. CI (`.github/workflows/ci.yml`) runs the Foundry suite with invariants at the CI profile, the SDK anvil e2e, indexer codegen and typecheck, web and server builds, the Docker image, gitleaks over history, Slither with the triaged config, and a strict docs build.

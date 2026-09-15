@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Ban, Bot, Fingerprint, Play, Square, Zap, CheckCircle2, XCircle, Info, PauseCircle } from "lucide-react";
+import { Ban, Bot, Fingerprint, Play, Square, Zap, CheckCircle2, XCircle, Info, PauseCircle, Landmark, ShieldOff, LockKeyhole } from "lucide-react";
 import type { Session } from "../App";
 import { api, type AgentState, type AgentView } from "../lib/api";
 import { fmtTokens, getClient } from "../lib/client";
@@ -13,6 +13,7 @@ export default function AgentScreen({ s }: { s: Session }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [forced, setForced] = useState<{ name: string; message: string } | null>(null);
+  const [probe, setProbe] = useState<{ blocked: boolean; reason?: string; hash?: string } | null>(null);
 
   const load = async () => {
     if (!s.agent) return;
@@ -43,13 +44,31 @@ export default function AgentScreen({ s }: { s: Session }) {
       await load();
     } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
   };
+  const probePolicy = async () => {
+    if (!s.agent || !s.mandateHash) return;
+    setBusy("probe"); setProbe(null);
+    try {
+      const r = await api<{ blocked: boolean; reason?: string; hash?: string }>(`/api/agents/${s.agent.id}/policy-probe`, { json: { mandateHash: s.mandateHash } });
+      setProbe(r);
+      toast.push({ kind: r.blocked ? "info" : "error", title: r.blocked ? "Privy refused to sign outside the policy" : "Privy signed it: no policy attached", detail: r.reason?.slice(0, 160) });
+      await load();
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
+  };
   const revoke = async () => {
     if (!s.principal || !s.mandateHash) return;
     setBusy("revoke"); setErr(null);
     try {
+      if (s.privyPrincipal) {
+        const out = await api<{ hash: string }>("/api/privy/revoke", { json: { identityToken: s.privyPrincipal.identityToken(), account: s.privyPrincipal.account, mandateHash: s.mandateHash } });
+        toast.push({ kind: "ok", title: "Mandate revoked via the session signer (no prompt)", link: { href: `${s.cfg.explorer}/tx/${out.hash}`, label: "Revoke transaction" } });
+        await load();
+        return;
+      }
+      if (s.principal.kind === "signer") throw new Error("This principal signs through the Privy session signer");
       const digest = await client.mandate.revokeDigest(s.principal.address, s.mandateHash);
       const signature = await s.principal.signChallenge(digest);
       const hash = await s.tx.revoke(s.principal.address, s.mandateHash, signature);
+      if (s.cfg.privy.enabled && a?.custody === "privy" && s.tx.mode.kind === "wallet") await api(`/api/mandates/${s.mandateHash}/revoked`, { json: {} }).catch(() => {});
       toast.push({ kind: "ok", title: "Mandate revoked", link: { href: `${s.cfg.explorer}/tx/${hash}`, label: "Revoke transaction" } });
       await load();
     } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
@@ -68,14 +87,14 @@ export default function AgentScreen({ s }: { s: Session }) {
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card title="Agent runner" icon={<Bot className="h-4 w-4" />} right={<Pill tone={status.tone} dot={status.tone === "ok"}>{status.text}</Pill>} className="rise rise-1 lg:col-span-1">
+        <Card title="Agent runner" icon={<Bot className="h-4 w-4" />} right={<span className="flex items-center gap-2">{a?.custody === "privy" && <Pill tone="brand">Privy server wallet</Pill>}<Pill tone={status.tone} dot={status.tone === "ok"}>{status.text}</Pill></span>} className="rise rise-1 lg:col-span-1">
           <div className="space-y-4">
             <Stat label="Mandate" value={<span className="mono break-all text-[11px] font-normal leading-relaxed text-white/80">{s.mandateHash}</span>} />
             <div className="grid grid-cols-2 gap-2">
               <Button onClick={run} disabled={!canRun} icon={<Play className="h-4 w-4" />}>Run</Button>
               <Button kind="ghost" onClick={stop} disabled={!a?.running} icon={<Square className="h-4 w-4" />}>Stop</Button>
               <Button kind="subtle" onClick={force} busy={busy === "force"} icon={<Ban className="h-4 w-4" />} className="col-span-2">Force out-of-bounds call</Button>
-              <Button kind="danger" onClick={revoke} busy={busy === "revoke"} disabled={!s.principal || x?.revoked} icon={<Fingerprint className="h-4 w-4" />} className="col-span-2">Revoke with passkey</Button>
+              <Button kind="danger" onClick={revoke} busy={busy === "revoke"} disabled={!s.principal || x?.revoked} icon={s.privyPrincipal ? <LockKeyhole className="h-4 w-4" /> : <Fingerprint className="h-4 w-4" />} className="col-span-2">{s.privyPrincipal ? "Revoke (session signer, no prompt)" : "Revoke with passkey"}</Button>
             </div>
             {forced && <Notice kind="warn"><div className="font-semibold">Blocked before sending</div><div className="mono mt-1 text-[11px] text-white/75">{forced.message}</div><div className="mt-1 text-[11px] text-white/50">The SDK ran the registry's validate and raised the typed error. No transaction was sent.</div></Notice>}
             {err && <Notice kind="error"><span className="mono text-xs">{err}</span></Notice>}
@@ -107,6 +126,28 @@ export default function AgentScreen({ s }: { s: Session }) {
           </div>
         </Card>
       </div>
+
+      {a?.custody === "privy" && (
+        <Card title="Privy wallet policy" icon={<Landmark className="h-4 w-4" />} right={a.policy ? <Pill tone={a.policy.revoked ? "bad" : "ok"} dot={!a.policy.revoked}>{a.policy.revoked ? "deny-all (revoked)" : "mirroring mandate"}</Pill> : <Pill>no policy yet</Pill>} className="rise rise-4">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+            <div>
+              <p className="mb-3 text-xs leading-relaxed text-white/55">The agent's key lives in Privy{a.privyWalletId ? <> (wallet <span className="mono">{a.privyWalletId}</span>)</> : null}. {a.policy ? "Its policy allows exactly one action: MandateExecutor.execute for this mandate, on this chain, within the whitelist and per-block cap. Everything else is refused before a signature exists." : "A policy is attached when a mandate is granted."}</p>
+              {a.policy && (
+                <ul className="space-y-1 text-xs">
+                  {a.policy.rules.map((r) => (
+                    <li key={r.name} className="flex flex-wrap items-center gap-2"><span className={`rounded px-1.5 text-[10px] font-bold ${r.action === "ALLOW" ? "bg-ok/15 text-ok" : "bg-bad/15 text-bad"}`}>{r.action}</span><span className="mono text-white/60">{r.method}</span><span className="text-white/75">{r.name}</span>{r.conditions.length > 0 && <span className="text-white/35">· {r.conditions.map((c) => `${c.field} ${c.operator} ${Array.isArray(c.value) ? `[${c.value.length}]` : c.value.length > 14 ? c.value.slice(0, 12) + "…" : c.value}`).join(" · ")}</span>}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="flex flex-col gap-2 md:w-64">
+              <Button kind="subtle" onClick={probePolicy} busy={busy === "probe"} disabled={!a.policy} icon={<ShieldOff className="h-4 w-4" />}>Test the policy</Button>
+              <span className="text-[11px] text-white/40">Asks Privy to sign a plain transfer from the agent key. With the policy attached, Privy refuses and nothing reaches the chain.</span>
+              {probe && <Notice kind={probe.blocked ? "ok" : "error"}><div className="font-semibold">{probe.blocked ? "Refused by Privy" : "Signed"}</div>{probe.reason && <div className="mono mt-1 text-[11px] text-white/70">{probe.reason.slice(0, 200)}</div>}</Notice>}
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card title="Executions" icon={<Zap className="h-4 w-4" />} right={<span className="text-[11px] text-white/40">live · refreshes every 3s</span>} className="rise rise-4">
         <ul className="scroll-thin max-h-[380px] space-y-1 overflow-auto pr-1">
