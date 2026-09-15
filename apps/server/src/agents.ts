@@ -143,8 +143,14 @@ export async function prepareAgent(): Promise<{ agentKey: Address; custody: "loc
 export async function activateAgent(input: { agentKey: Address; agentId: bigint; registerTx: Hex; fundTx: Hex; fundedBy: Address }): Promise<DemoAgent> {
   const k = pendingKeys.get(input.agentKey);
   if (!k) throw new Error("Unknown pending agent key");
-  const [owner, balance] = await Promise.all([identityOwnerOf(input.agentId), publicClient.getBalance({ address: input.agentKey })]);
+  const owner = await identityOwnerOf(input.agentId);
   if (!owner) throw new Error(`ERC-8004 agent ${input.agentId} is not registered`);
+  // The funding receipt is final, but a load-balanced public RPC can lag a block or two on balance reads.
+  let balance = 0n;
+  for (let attempt = 0; attempt < 6 && balance === 0n; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
+    balance = await publicClient.getBalance({ address: input.agentKey, blockTag: "latest" });
+  }
   if (balance === 0n) throw new Error("Agent key has no gas");
   pendingKeys.delete(input.agentKey);
   const agent: DemoAgent = {

@@ -78,7 +78,14 @@ await page.click("text=Next: grant a mandate");
 await page.waitForSelector("text=Mandate terms");
 const before = (await body()).match(/ERC-8004 #(\d+)/)?.[1] ?? null;
 await page.click(before ? "text=provision another" : "text=Provision agent");
-await page.waitForFunction((b) => { const m = document.body.innerText.match(/ERC-8004 #(\d+)/); return !!m && m[1] !== b; }, before, { timeout: 180_000 });
+try {
+  await page.waitForFunction((b) => { const m = document.body.innerText.match(/ERC-8004 #(\d+)/); return !!m && m[1] !== b; }, before, { timeout: 180_000 });
+} catch (e) {
+  console.log("UI error notices:", JSON.stringify(await page.locator(".text-rose-100, .text-rose-200, .text-amber-100").allInnerTexts()));
+  await page.screenshot({ path: "e2e/shot-wallet-fail.png", fullPage: true });
+  throw e;
+}
+lap(`agent provisioned #${(await body()).match(/ERC-8004 #(\d+)/)?.[1]} (wallet registered the ERC-8004 identity and funded the key)`);
 await page.click("text=Sign with passkey & grant");
 await waitText(/Mandate granted/);
 const mandateHash = (await body()).match(/0x[0-9a-f]{64}/)[0];
