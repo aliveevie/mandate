@@ -66,6 +66,23 @@ export function Notice({ kind, children, className = "" }: { kind: "info" | "err
   return <div className={`rounded-xl border px-3.5 py-2.5 text-sm leading-relaxed ${c} ${className}`}>{children}</div>;
 }
 
+/** Human-readable error with the raw text behind a disclosure. */
+export function ErrorNotice({ error, className = "" }: { error: import("../lib/errors").FriendlyError; className?: string }) {
+  const kind = error.cancelled ? "warn" : "error";
+  return (
+    <Notice kind={kind} className={className}>
+      <div className="font-semibold">{error.title}</div>
+      {error.detail && <div className="mt-0.5 text-xs opacity-90">{error.detail}</div>}
+      {!error.cancelled && error.raw && error.raw !== error.title && (
+        <details className="mt-1.5">
+          <summary className="cursor-pointer text-[11px] opacity-60 hover:opacity-100">technical details</summary>
+          <pre className="mono mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all text-[10px] leading-relaxed opacity-70">{error.raw.slice(0, 2000)}</pre>
+        </details>
+      )}
+    </Notice>
+  );
+}
+
 export function Pill({ children, tone = "neutral", dot }: { children: ReactNode; tone?: "neutral" | "ok" | "warn" | "bad" | "brand"; dot?: boolean }) {
   const c = tone === "ok" ? "bg-ok/10 text-ok ring-ok/30" : tone === "warn" ? "bg-warn/10 text-warn ring-warn/30" : tone === "bad" ? "bg-bad/10 text-bad ring-bad/30" : tone === "brand" ? "bg-brand/15 text-violet-200 ring-brand/40" : "bg-white/[.06] text-white/70 ring-white/10";
   return (

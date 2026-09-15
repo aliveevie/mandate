@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Award, Search, ShieldCheck, Sparkles } from "lucide-react";
 import type { Session } from "../App";
+import { friendlyError, type FriendlyError } from "../lib/errors";
 import { api } from "../lib/api";
-import { Address, Button, Card, inputCls, Notice, Pill, Ring, Stat, TxLink } from "../components/primitives";
+import { Address, Button, Card, inputCls, Notice, Pill, Ring, Stat, TxLink, ErrorNotice } from "../components/primitives";
 
 interface Rep {
   agentId: string; score: number | null; trips: number; executed: number; pnlBps: string; attestations: number;
@@ -15,13 +16,13 @@ interface Rep {
 export default function Reputation({ s }: { s: Session }) {
   const [agentId, setAgentId] = useState(s.agent?.agentId ?? "1831");
   const [rep, setRep] = useState<Rep | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<FriendlyError | null>(null);
   const [loading, setLoading] = useState(false);
   const seq = useRef(0);
   const load = async (id = agentId) => {
     const mine = ++seq.current; setErr(null); setLoading(true);
     try { const r = await api<Rep>(`/api/reputation/${id}`); if (mine === seq.current) setRep(r); }
-    catch (e) { if (mine === seq.current) setErr((e as Error).message); }
+    catch (e) { if (mine === seq.current) setErr(friendlyError(e)); }
     finally { if (mine === seq.current) setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
@@ -40,7 +41,7 @@ export default function Reputation({ s }: { s: Session }) {
               {s.agent && <Button kind="subtle" size="sm" onClick={() => pick(s.agent!.agentId)}>my agent #{s.agent.agentId}</Button>}
               <Button kind="subtle" size="sm" onClick={() => pick("1831")}>demo agent #1831</Button>
             </div>
-            {err && <Notice kind="error"><span className="mono text-xs">{err}</span></Notice>}
+            {err && <ErrorNotice error={err} />}
             <p className="text-xs leading-relaxed text-white/50">Only the attestor (the Chainlink CRE workflow in production) can write. It computes compliance from indexed executions, breaker trips and PnL, commits its inputs in an <span className="mono">evidenceHash</span>, and the adapter mirrors the score into the ERC-8004 Reputation Registry. Agents cannot self-attest.</p>
           </div>
         </Card>

@@ -4,10 +4,11 @@ import { ERC8004IdentityRegistryAbi } from "@ibxlab/mandate";
 import { parseAbi, parseEventLogs, type Address as Addr, type Hex } from "viem";
 import { ArrowRight, Bot, Fingerprint, ShieldCheck, LockKeyhole, Landmark } from "lucide-react";
 import type { Session } from "../App";
+import { friendlyError, type FriendlyError } from "../lib/errors";
 import { api, type AgentView } from "../lib/api";
 import { getClient } from "../lib/client";
 import { useToast } from "../lib/toast";
-import { Address, Button, Card, Field, inputCls, Notice, Pill, Stat, TxLink } from "../components/primitives";
+import { Address, Button, Card, Field, inputCls, Notice, Pill, Stat, TxLink, ErrorNotice } from "../components/primitives";
 
 const SELECTORS = ["buy(address,uint256)", "noop()"];
 
@@ -15,7 +16,7 @@ export default function Grant({ s }: { s: Session }) {
   const client = getClient(s.cfg);
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<FriendlyError | null>(null);
   const [spendCap, setSpendCap] = useState(300);
   const [perBlockCap, setPerBlockCap] = useState(150);
   const [drawdown, setDrawdown] = useState(15);
@@ -46,7 +47,7 @@ export default function Grant({ s }: { s: Session }) {
       }
       s.setAgent(a);
       toast.push({ kind: "ok", title: `Agent #${a.agentId} registered in ERC-8004`, link: { href: `${s.cfg.explorer}/tx/${a.registerTx}`, label: "Registration tx" } });
-    } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
+    } catch (e) { setErr(friendlyError(e)); } finally { setBusy(null); }
   };
 
   const grant = async () => {
@@ -86,7 +87,7 @@ export default function Grant({ s }: { s: Session }) {
       setResult({ mandateHash: out.mandateHash, tx: out.hash, policy });
       s.setMandateHash(out.mandateHash);
       toast.push({ kind: "ok", title: "Mandate granted", detail: out.mandateHash, link: { href: `${s.cfg.explorer}/tx/${out.hash}`, label: "Grant transaction" } });
-    } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
+    } catch (e) { setErr(friendlyError(e)); } finally { setBusy(null); }
   };
 
   const summary = useMemo(() => [
@@ -177,7 +178,7 @@ export default function Grant({ s }: { s: Session }) {
           </Card>
         )}
         {result?.policy && "error" in result.policy && <Notice kind="warn">Policy mirror failed: <span className="mono text-xs">{result.policy.error}</span></Notice>}
-        {err && <Notice kind="error"><span className="font-semibold">Grant failed.</span> <span className="mono text-xs">{err}</span></Notice>}
+        {err && <ErrorNotice error={err} />}
       </div>
     </div>
   );
