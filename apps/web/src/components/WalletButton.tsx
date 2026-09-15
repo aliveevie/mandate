@@ -1,23 +1,72 @@
-import { useAccount, useBalance, useConnect, useDisconnect, useSwitchChain } from "wagmi";
-import { LogOut, Wallet } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useAccount, useBalance, useConnect, useDisconnect, useSwitchChain, type Connector } from "wagmi";
+import { ChevronDown, LogOut, Wallet } from "lucide-react";
 import { Button, Address } from "./primitives";
+import { useToast } from "../lib/toast";
 
 const MONAD_TESTNET = 10143 as const;
+const CONNECT_TIMEOUT_MS = 25_000;
 
 export function WalletButton({ chainId: _chainId }: { chainId: number }) {
   const chainId = MONAD_TESTNET;
   const { address, isConnected, chain } = useAccount();
-  const { connectors, connect, isPending } = useConnect();
+  const { connectors, connectAsync } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain, isPending: switching } = useSwitchChain();
   const { data: bal } = useBalance({ address, chainId, query: { enabled: !!address } });
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => { if (!menuRef.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  // Prefer wallets announced via EIP-6963 (they carry a name and icon); fall back to the generic injected one.
+  const announced = connectors.filter((c) => c.type === "injected" && c.id !== "injected");
+  const options: readonly Connector[] = announced.length > 0 ? announced : connectors;
+
+  const connectWith = async (c: Connector) => {
+    setOpen(false);
+    setBusy(c.name);
+    try {
+      await Promise.race([
+        connectAsync({ connector: c, chainId }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`${c.name} did not respond. Open the extension, unlock it, or reload the page.`)), CONNECT_TIMEOUT_MS)),
+      ]);
+    } catch (e) {
+      const msg = (e as Error).message ?? String(e);
+      toast.push({ kind: "error", title: `Could not connect ${c.name}`, detail: msg.split("\n")[0]?.slice(0, 180) });
+    } finally {
+      setBusy(null);
+    }
+  };
 
   if (!isConnected || !address) {
-    const c = connectors[0];
+    if (options.length === 0) {
+      return <Button kind="ghost" size="sm" icon={<Wallet className="h-4 w-4" />} disabled>No wallet found</Button>;
+    }
     return (
-      <Button kind="ghost" size="sm" icon={<Wallet className="h-4 w-4" />} busy={isPending} disabled={!c} onClick={() => c && connect({ connector: c })} className="whitespace-nowrap">
-        {c ? "Connect wallet" : "No wallet found"}
-      </Button>
+      <div className="relative" ref={menuRef}>
+        <Button kind="ghost" size="sm" icon={<Wallet className="h-4 w-4" />} busy={!!busy} onClick={() => (options.length === 1 ? connectWith(options[0]!) : setOpen((v) => !v))} className="whitespace-nowrap">
+          {busy ? `Connecting ${busy}…` : "Connect wallet"}{options.length > 1 && !busy && <ChevronDown className="h-3.5 w-3.5 opacity-60" />}
+        </Button>
+        {open && (
+          <div className="glass glass-strong absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-xl p-1">
+            {options.map((c) => (
+              <button key={c.uid} onClick={() => connectWith(c)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-white/85 hover:bg-white/[.08]">
+                {c.icon ? <img src={c.icon} alt="" className="h-5 w-5 rounded" /> : <Wallet className="h-4 w-4 text-white/50" />}
+                <span className="truncate">{c.name}</span>
+              </button>
+            ))}
+            <div className="px-3 pb-1.5 pt-2 text-[10px] text-white/35">Wallets announced by your browser. Pick one that is unlocked.</div>
+          </div>
+        )}
+      </div>
     );
   }
   const wrong = chain?.id !== chainId;
