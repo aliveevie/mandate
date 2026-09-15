@@ -6,8 +6,7 @@
  *
  * The private key is printed once and never sent anywhere except as a signature over API requests.
  */
-import { PrivyClient } from "@privy-io/node";
-import { generateP256KeyPair } from "@privy-io/node/lib/cryptography";
+import { PrivyClient, generateP256KeyPair } from "@privy-io/node";
 
 const appId = process.env.PRIVY_APP_ID;
 const appSecret = process.env.PRIVY_APP_SECRET;
