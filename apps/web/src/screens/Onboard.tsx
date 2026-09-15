@@ -4,10 +4,11 @@ import { encodeFunctionData, parseAbi } from "viem";
 import { ArrowRight, Fingerprint, KeyRound, ShieldCheck, Cpu, Wallet, Zap, Mail, LockKeyhole } from "lucide-react";
 import { usePrivySession } from "../lib/privy";
 import type { Session } from "../App";
+import { friendlyError, type FriendlyError } from "../lib/errors";
 import { fmtTokens, getClient, getPublicClient, rpId } from "../lib/client";
 import { api } from "../lib/api";
 import { useToast } from "../lib/toast";
-import { Address, Button, Card, Notice, Pill, Stat } from "../components/primitives";
+import { Address, Button, Card, Notice, Pill, Stat, ErrorNotice } from "../components/primitives";
 
 const erc20 = parseAbi(["function approve(address,uint256) returns (bool)", "function balanceOf(address) view returns (uint256)", "function allowance(address,address) view returns (uint256)"]);
 
@@ -16,7 +17,7 @@ export default function Onboard({ s }: { s: Session }) {
   const pc = getPublicClient(s.cfg);
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<FriendlyError | null>(null);
   const [balance, setBalance] = useState<bigint | null>(null);
   const [allowance, setAllowance] = useState<bigint | null>(null);
   const [software, setSoftware] = useState(!window.PublicKeyCredential);
@@ -44,7 +45,7 @@ export default function Onboard({ s }: { s: Session }) {
       await client.passkey.save(principal);
       s.setPrincipal(principal);
       toast.push({ kind: "ok", title: "PasskeyAccount deployed", detail: out.address, link: { href: `${s.cfg.explorer}/address/${out.address}`, label: "View on explorer" } });
-    } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
+    } catch (e) { setErr(friendlyError(e)); } finally { setBusy(null); }
   };
 
   const approve = async () => {
@@ -60,7 +61,7 @@ export default function Onboard({ s }: { s: Session }) {
       const hash = await s.tx.executeOwner(s.principal.address, call, signature);
       toast.push({ kind: "ok", title: "Venue approved with a passkey-signed owner tx", link: { href: `${s.cfg.explorer}/tx/${hash}`, label: "View transaction" } });
       await refresh();
-    } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
+    } catch (e) { setErr(friendlyError(e)); } finally { setBusy(null); }
   };
 
   const forget = async () => { await client.passkey.clear(); s.setPrincipal(null); s.setPrivyPrincipal(null); s.setApproved(false); setBalance(null); setAllowance(null); };
@@ -71,9 +72,9 @@ export default function Onboard({ s }: { s: Session }) {
     setErr(null);
     try {
       if (!privy.authenticated) { privy.login(); return; }
-      if (!privy.embedded) { setErr("Your Privy account has no embedded wallet yet. Sign out and back in, or create one in the Privy modal."); return; }
+      if (!privy.embedded) { setErr(friendlyError(new Error("Your Privy account has no embedded wallet yet. Sign out and back in, or create one in the Privy modal."))); return; }
       const token = privy.identityToken;
-      if (!token) { setErr("Privy identity token not ready yet; try again in a second."); return; }
+      if (!token) { setErr(friendlyError(new Error("Privy identity token not ready yet; try again in a second."))); return; }
       setPrivyStep("Creating your account…");
       const info = await api<{ account: `0x${string}`; owner: `0x${string}`; scopePolicyId: string; delegated: boolean; signerId: string }>("/api/privy/principal", { json: { identityToken: token } });
       setPrivyInfo(info);
@@ -90,7 +91,7 @@ export default function Onboard({ s }: { s: Session }) {
       s.setPrincipal(principal);
       s.setPrivyPrincipal({ account: info.account, owner: info.owner, identityToken: () => privy.identityToken ?? null });
       toast.push({ kind: "ok", title: "Account ready; the session signer is delegated", detail: info.account, link: { href: `${s.cfg.explorer}/address/${info.account}`, label: "View on explorer" } });
-    } catch (e) { setErr((e as Error).message); } finally { setPrivyStep(null); }
+    } catch (e) { setErr(friendlyError(e)); } finally { setPrivyStep(null); }
   };
 
   const privyApprove = async () => {
@@ -100,7 +101,7 @@ export default function Onboard({ s }: { s: Session }) {
       const out = await api<{ hash: string }>("/api/privy/approve", { json: { identityToken: s.privyPrincipal.identityToken(), account: s.privyPrincipal.account } });
       toast.push({ kind: "ok", title: "Venue approved: EIP-712 signed by the session signer, no prompt", link: { href: `${s.cfg.explorer}/tx/${out.hash}`, label: "View transaction" } });
       await refresh();
-    } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
+    } catch (e) { setErr(friendlyError(e)); } finally { setBusy(null); }
   };
   const ready = !!s.principal && (allowance ?? 0n) > 0n;
 
@@ -206,7 +207,7 @@ export default function Onboard({ s }: { s: Session }) {
         </Card>
       </div>
 
-      {err && <Notice kind="error"><span className="font-semibold">Something failed.</span> <span className="mono text-xs">{err}</span></Notice>}
+      {err && <ErrorNotice error={err} />}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useAccount, useBalance, useConnect, useDisconnect, useSwitchChain, type
 import { ChevronDown, LogOut, Wallet } from "lucide-react";
 import { Button, Address } from "./primitives";
 import { useToast } from "../lib/toast";
+import { friendlyError } from "../lib/errors";
 
 const MONAD_TESTNET = 10143 as const;
 const CONNECT_TIMEOUT_MS = 25_000;
@@ -39,8 +40,8 @@ export function WalletButton({ chainId: _chainId }: { chainId: number }) {
         new Promise((_, reject) => setTimeout(() => reject(new Error(`${c.name} did not respond. Open the extension, unlock it, or reload the page.`)), CONNECT_TIMEOUT_MS)),
       ]);
     } catch (e) {
-      const msg = (e as Error).message ?? String(e);
-      toast.push({ kind: "error", title: `Could not connect ${c.name}`, detail: msg.split("\n")[0]?.slice(0, 180) });
+      const f = friendlyError(e);
+      toast.push({ kind: f.cancelled ? "info" : "error", title: f.cancelled ? f.title : `Could not connect ${c.name}`, detail: f.detail ?? f.title });
     } finally {
       setBusy(null);
     }
