@@ -62,7 +62,7 @@ await waitText(/Frozen by Tripped|Lifetime spend cap reached/, 300_000);
 await page.waitForTimeout(1500);
 lap(`agent outcome: ${(await body()).match(/Frozen by Tripped|Lifetime spend cap reached/)?.[0]}`);
 await shot("agent");
-if (/Privy wallet policy/.test(await body())) {
+if (/privy wallet policy/i.test(await body())) {
   await page.click("text=Test the policy");
   await waitText(/Refused by Privy/, 60_000);
   lap("Privy custody: policy card shown; probe refused by Privy (policy_violation)");
