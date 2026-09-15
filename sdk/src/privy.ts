@@ -41,6 +41,9 @@ export interface MandatePolicy {
 }
 
 const EXECUTE_ABI = MandateExecutorAbi.filter((i) => i.type === "function" && i.name === "execute");
+/** Always-true conditions, for DENY rules on methods Privy requires to be conditioned. */
+const ANY_TRANSACTION: PolicyCondition = { field_source: "ethereum_transaction", field: "value", operator: "gte", value: "0" };
+const ANY_TYPED_DATA: PolicyCondition = { field_source: "system", field: "current_unix_timestamp", operator: "gte", value: "0" };
 
 /**
  * The Privy policy that mirrors a mandate onto the agent's server wallet.
@@ -63,10 +66,12 @@ export function buildMandatePolicy(input: {
     name: input.name ?? `mandate ${input.mandateHash.slice(0, 10)}`,
     chain_type: "ethereum",
     rules: [
-      {
-        name: "Execute this mandate only",
-        method: "eth_sendTransaction",
-        action: "ALLOW",
+      // Server wallets used through viem sign with eth_signTransaction (then we broadcast); Privy-broadcast
+      // flows use eth_sendTransaction. Both are allowed under identical conditions and nothing else is.
+      ...(["eth_signTransaction", "eth_sendTransaction"] as const).map((method) => ({
+        name: `Execute this mandate only (${method})`,
+        method,
+        action: "ALLOW" as const,
         conditions: [
           { field_source: "ethereum_transaction", field: "to", operator: "eq", value: input.executor.toLowerCase() },
           { field_source: "ethereum_transaction", field: "chain_id", operator: "eq", value: String(input.chainId) },
@@ -75,11 +80,11 @@ export function buildMandatePolicy(input: {
           { field_source: "ethereum_calldata", field: "execute.target", operator: "in", value: targets, abi: EXECUTE_ABI },
           { field_source: "ethereum_calldata", field: "execute.amount", operator: "lte", value: input.mandate.perBlockCap.toString(), abi: EXECUTE_ABI },
           { field_source: "system", field: "current_unix_timestamp", operator: "lte", value: input.mandate.validUntil.toString() },
-        ],
-      },
+        ] as PolicyCondition[],
+      })),
       { name: "No message signing", method: "personal_sign", action: "DENY", conditions: [] },
-      { name: "No typed-data signing", method: "eth_signTypedData_v4", action: "DENY", conditions: [] },
-      { name: "No raw transaction signing", method: "eth_signTransaction", action: "DENY", conditions: [] },
+      // Privy requires at least one condition on this method; an always-true condition denies everything.
+      { name: "No typed-data signing", method: "eth_signTypedData_v4", action: "DENY", conditions: [ANY_TYPED_DATA] },
       { name: "No key export", method: "exportPrivateKey", action: "DENY", conditions: [] },
     ],
   };
@@ -110,8 +115,8 @@ export function buildSessionSignerPolicy(input: { chainId: number; registry: Add
         ],
       },
       { name: "No message signing", method: "personal_sign", action: "DENY", conditions: [] },
-      { name: "No transactions", method: "eth_sendTransaction", action: "DENY", conditions: [] },
-      { name: "No raw transaction signing", method: "eth_signTransaction", action: "DENY", conditions: [] },
+      { name: "No transactions", method: "eth_sendTransaction", action: "DENY", conditions: [ANY_TRANSACTION] },
+      { name: "No raw transaction signing", method: "eth_signTransaction", action: "DENY", conditions: [ANY_TRANSACTION] },
       { name: "No key export", method: "exportPrivateKey", action: "DENY", conditions: [] },
     ],
   };
@@ -228,7 +233,7 @@ export async function createPrivyIntegration(cfg: PrivyIntegrationConfig): Promi
         try {
           const res = await client.wallets().ethereum().sendTransaction(wallet.walletId, {
             caip2,
-            transaction: { to, value: "0x0", chain_id: cfg.chainId },
+            params: { transaction: { to, value: "0x0", chain_id: cfg.chainId } },
             authorization_context,
           } as never);
           return { blocked: false, hash: (res as { hash: Hex }).hash };
@@ -257,7 +262,7 @@ export async function createPrivyIntegration(cfg: PrivyIntegrationConfig): Promi
       },
       async signTypedData({ walletId, typedData }) {
         const res = await client.wallets().ethereum().signTypedData(walletId, {
-          typed_data: toTypedData(typedData),
+          params: { typed_data: toTypedData(typedData) },
           authorization_context,
         } as never);
         return (res as { signature: Hex }).signature;

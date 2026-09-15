@@ -15,10 +15,11 @@ describe("Privy policy mirrors a mandate", () => {
     executor,
   });
 
-  it("allows only MandateExecutor.execute for this mandate, on this chain, with zero value", () => {
+  it("allows only MandateExecutor.execute for this mandate, on this chain, with zero value (sign and send)", () => {
     const allow = policy.rules.filter((r) => r.action === "ALLOW");
-    expect(allow).toHaveLength(1);
+    expect(allow.map((r) => r.method).sort()).toEqual(["eth_sendTransaction", "eth_signTransaction"]);
     const c = allow[0]!.conditions;
+    expect(allow[1]!.conditions).toEqual(c);
     expect(c).toContainEqual({ field_source: "ethereum_transaction", field: "to", operator: "eq", value: executor.toLowerCase() });
     expect(c).toContainEqual({ field_source: "ethereum_transaction", field: "chain_id", operator: "eq", value: "10143" });
     expect(c).toContainEqual({ field_source: "ethereum_transaction", field: "value", operator: "eq", value: "0" });
@@ -30,7 +31,7 @@ describe("Privy policy mirrors a mandate", () => {
 
   it("denies signing, raw transactions and key export explicitly", () => {
     const denied = policy.rules.filter((r) => r.action === "DENY").map((r) => r.method).sort();
-    expect(denied).toEqual(["eth_signTransaction", "eth_signTypedData_v4", "exportPrivateKey", "personal_sign"]);
+    expect(denied).toEqual(["eth_signTypedData_v4", "exportPrivateKey", "personal_sign"]);
   });
 
   it("carries the executor ABI so Privy can decode the calldata fields it checks", () => {

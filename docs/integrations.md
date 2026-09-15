@@ -38,8 +38,8 @@ When a mandate is granted, the server writes a policy onto the agent wallet that
 
 | Rule | What it allows |
 |---|---|
-| `eth_sendTransaction` ALLOW | `to == MandateExecutor`, `chain_id == 10143`, `value == 0`, calldata is `execute(mandateHash == this mandate, target in whitelist, amount <= perBlockCap)`, and `now <= validUntil` |
-| `personal_sign`, `eth_signTypedData_v4`, `eth_signTransaction`, `exportPrivateKey` DENY | nothing else, ever |
+| `eth_signTransaction` and `eth_sendTransaction` ALLOW | `to == MandateExecutor`, `chain_id == 10143`, `value == 0`, calldata is `execute(mandateHash == this mandate, target in whitelist, amount <= perBlockCap)`, and `now <= validUntil` |
+| `personal_sign`, `eth_signTypedData_v4`, `exportPrivateKey` DENY | nothing else, ever |
 
 The chain remains the enforcement layer and additionally holds the lifetime cap and the breaker. Privy is defence in depth: a compromised agent process cannot even produce a signature outside the mandate, so a bad transaction never exists. On revocation the policy is replaced with a single deny-all rule. `buildMandatePolicy` is a pure function with unit tests, and the Agent screen has a **Test the policy** button that asks Privy to sign a plain transfer and shows the refusal.
 
