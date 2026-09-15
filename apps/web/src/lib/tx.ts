@@ -20,7 +20,7 @@ export interface PrincipalTx {
   mode: TxMode;
   deployAccount(publicKey: { x: Hex; y: Hex }): Promise<{ address: Address; txs: Hex[] }>;
   executeOwner(account: Address, call: { target: Address; value: bigint; data: Hex }, signature: Hex): Promise<Hex>;
-  grant(signed: SignedMandate): Promise<{ hash: Hex; mandateHash: Hex }>;
+  grant(signed: SignedMandate): Promise<{ hash: Hex; mandateHash: Hex; policy?: unknown }>;
   revoke(account: Address, mandateHash: Hex, signature: Hex): Promise<Hex>;
 }
 
@@ -83,7 +83,7 @@ export function makePrincipalTx(cfg: PublicConfig, publicClient: PublicClient, w
       return out.hash;
     },
     async grant(signed) {
-      return api<{ hash: Hex; mandateHash: Hex }>("/api/relay/grant", { json: signed });
+      return api<{ hash: Hex; mandateHash: Hex; policy?: unknown }>("/api/relay/grant", { json: signed });
     },
     async revoke(account, mandateHash, signature) {
       const out = await api<{ hash: Hex }>("/api/relay/revoke", { json: { account, mandateHash, signature } });

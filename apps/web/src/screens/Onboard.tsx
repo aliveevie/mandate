@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { PasskeyAccountAbi } from "@ibxlab/mandate";
 import { encodeFunctionData, parseAbi } from "viem";
-import { ArrowRight, Fingerprint, KeyRound, ShieldCheck, Cpu, Wallet, Zap } from "lucide-react";
+import { ArrowRight, Fingerprint, KeyRound, ShieldCheck, Cpu, Wallet, Zap, Mail, LockKeyhole } from "lucide-react";
+import { usePrivySession } from "../lib/privy";
 import type { Session } from "../App";
 import { fmtTokens, getClient, getPublicClient, rpId } from "../lib/client";
+import { api } from "../lib/api";
 import { useToast } from "../lib/toast";
 import { Address, Button, Card, Notice, Pill, Stat } from "../components/primitives";
 
@@ -18,6 +20,9 @@ export default function Onboard({ s }: { s: Session }) {
   const [balance, setBalance] = useState<bigint | null>(null);
   const [allowance, setAllowance] = useState<bigint | null>(null);
   const [software, setSoftware] = useState(!window.PublicKeyCredential);
+  const privy = usePrivySession(s.cfg.privy.enabled);
+  const [privyStep, setPrivyStep] = useState<string | null>(null);
+  const [privyInfo, setPrivyInfo] = useState<{ account: string; owner: string; scopePolicyId: string; delegated: boolean; signerId: string } | null>(null);
 
   const refresh = async () => {
     if (!s.principal) return;
@@ -49,6 +54,7 @@ export default function Onboard({ s }: { s: Session }) {
       const call = { target: s.cfg.demo.asset, value: 0n, data: encodeFunctionData({ abi: erc20, functionName: "approve", args: [s.cfg.demo.venue, 2n ** 256n - 1n] }) };
       const nonce = await pc.readContract({ address: s.principal.address, abi: PasskeyAccountAbi, functionName: "nonce" });
       const digest = await pc.readContract({ address: s.principal.address, abi: PasskeyAccountAbi, functionName: "executeDigest", args: [call, nonce] });
+      if (s.principal.kind === "signer") throw new Error("This principal signs through the Privy session signer");
       const signature = await s.principal.signChallenge(digest);
       setBusy(s.tx.mode.kind === "wallet" ? "Confirm in your wallet…" : "Relaying owner transaction…");
       const hash = await s.tx.executeOwner(s.principal.address, call, signature);
@@ -57,7 +63,45 @@ export default function Onboard({ s }: { s: Session }) {
     } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
   };
 
-  const forget = async () => { await client.passkey.clear(); s.setPrincipal(null); s.setApproved(false); setBalance(null); setAllowance(null); };
+  const forget = async () => { await client.passkey.clear(); s.setPrincipal(null); s.setPrivyPrincipal(null); s.setApproved(false); setBalance(null); setAllowance(null); };
+
+  /** Privy path: sign in -> server deploys a SignerAccount owned by the embedded wallet -> user delegates a scoped signer. */
+  const privyCreate = async () => {
+    if (!privy) return;
+    setErr(null);
+    try {
+      if (!privy.authenticated) { privy.login(); return; }
+      if (!privy.embedded) { setErr("Your Privy account has no embedded wallet yet. Sign out and back in, or create one in the Privy modal."); return; }
+      const token = privy.identityToken;
+      if (!token) { setErr("Privy identity token not ready yet; try again in a second."); return; }
+      setPrivyStep("Creating your account…");
+      const info = await api<{ account: `0x${string}`; owner: `0x${string}`; scopePolicyId: string; delegated: boolean; signerId: string }>("/api/privy/principal", { json: { identityToken: token } });
+      setPrivyInfo(info);
+      if (!info.delegated) {
+        setPrivyStep("Delegating a scoped session signer…");
+        await privy.addSigners({ address: info.owner, signers: [{ signerId: info.signerId, policyIds: [info.scopePolicyId] }] });
+        info.delegated = true;
+      }
+      const principal = await client.passkey.attachSigner({
+        address: info.account, owner: info.owner,
+        // Signing happens on the server through the delegated signer; the browser never signs anything itself.
+        signTypedData: async () => { throw new Error("This principal signs through the Privy session signer on the server"); },
+      });
+      s.setPrincipal(principal);
+      s.setPrivyPrincipal({ account: info.account, owner: info.owner, identityToken: () => privy.identityToken ?? null });
+      toast.push({ kind: "ok", title: "Account ready; the session signer is delegated", detail: info.account, link: { href: `${s.cfg.explorer}/address/${info.account}`, label: "View on explorer" } });
+    } catch (e) { setErr((e as Error).message); } finally { setPrivyStep(null); }
+  };
+
+  const privyApprove = async () => {
+    if (!s.privyPrincipal) return;
+    setErr(null); setBusy("Signing through the session signer…");
+    try {
+      const out = await api<{ hash: string }>("/api/privy/approve", { json: { identityToken: s.privyPrincipal.identityToken(), account: s.privyPrincipal.account } });
+      toast.push({ kind: "ok", title: "Venue approved: EIP-712 signed by the session signer, no prompt", link: { href: `${s.cfg.explorer}/tx/${out.hash}`, label: "View transaction" } });
+      await refresh();
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
+  };
   const ready = !!s.principal && (allowance ?? 0n) > 0n;
 
   return (
@@ -107,17 +151,39 @@ export default function Onboard({ s }: { s: Session }) {
                 {s.tx.mode.kind === "wallet" ? <Wallet className="h-3.5 w-3.5 text-brand-2" /> : <Zap className="h-3.5 w-3.5 text-brand-2" />}
                 {s.tx.mode.kind === "wallet" ? "Your connected wallet will pay gas for the account deployment." : "Gasless demo: the relayer pays gas. Connect a wallet to pay your own."}
               </div>
+              {privy && (
+                <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                  <div className="mb-1 flex items-center gap-2 text-sm font-semibold"><Mail className="h-4 w-4 text-brand-2" /> No passkey device? Continue with Privy</div>
+                  <p className="mb-3 text-xs leading-relaxed text-white/55">Sign in with email or Google. An embedded wallet owns your account, and you delegate a session signer that may sign <span className="mono">Mandate</span> typed data for this app and nothing else, so granting and revoking never prompt again.</p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button kind="ghost" onClick={privyCreate} busy={!!privyStep} disabled={!privy.ready} icon={<LockKeyhole className="h-4 w-4" />}>
+                      {privyStep ?? (privy.authenticated ? "Create account & delegate signer" : "Sign in with Privy")}
+                    </Button>
+                    {privy.authenticated && <span className="text-xs text-white/45">signed in{privy.embedded ? ` · wallet ${privy.embedded.address.slice(0, 8)}…` : ""} · <button className="underline" onClick={() => privy.logout()}>sign out</button></span>}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Stat label="PasskeyAccount" value={<Address value={s.principal.address} chars={8} className="text-sm text-white" explorer={`${s.cfg.explorer}/address/${s.principal.address}`} />} sub="owned by your passkey" />
-                <Stat label="Key" value={<span className="capitalize">{s.principal.kind}</span>} sub={s.principal.credentialId ? `credential ${s.principal.credentialId.slice(0, 14)}…` : "WebCrypto P-256"} />
+                <Stat label={s.principal.kind === "signer" ? "SignerAccount" : "PasskeyAccount"} value={<Address value={s.principal.address} chars={8} className="text-sm text-white" explorer={`${s.cfg.explorer}/address/${s.principal.address}`} />} sub={s.principal.kind === "signer" ? "owned by your Privy embedded wallet" : "owned by your passkey"} />
+                {s.principal.kind === "signer"
+                  ? <Stat label="Session signer" value={privyInfo?.delegated || s.privyPrincipal ? "delegated" : "not delegated"} sub={privyInfo ? `scope policy ${privyInfo.scopePolicyId.slice(0, 10)}…` : "signs Mandate typed data only"} />
+                  : <Stat label="Key" value={<span className="capitalize">{s.principal.kind}</span>} sub={s.principal.credentialId ? `credential ${s.principal.credentialId.slice(0, 14)}…` : "WebCrypto P-256"} />}
               </div>
-              <div className="rounded-xl bg-black/30 p-3 ring-1 ring-white/[.06]">
-                <div className="mb-1 text-[11px] uppercase tracking-wider text-white/40">P256 public key</div>
-                <div className="mono break-all text-[11px] leading-relaxed text-white/70">x {s.principal.publicKey.x}<br />y {s.principal.publicKey.y}</div>
-              </div>
+              {s.principal.kind === "signer" ? (
+                <div className="rounded-xl bg-black/30 p-3 ring-1 ring-white/[.06]">
+                  <div className="mb-1 text-[11px] uppercase tracking-wider text-white/40">Owner (embedded wallet)</div>
+                  <div className="mono break-all text-[11px] leading-relaxed text-white/70">{s.principal.owner}</div>
+                  <div className="mt-2 text-[11px] text-white/45">The delegated signer may sign only EIP-712 for the Mandate registry and this account on chain {s.cfg.chainId}. Revoke the delegation any time from your Privy account.</div>
+                </div>
+              ) : (
+                <div className="rounded-xl bg-black/30 p-3 ring-1 ring-white/[.06]">
+                  <div className="mb-1 text-[11px] uppercase tracking-wider text-white/40">P256 public key</div>
+                  <div className="mono break-all text-[11px] leading-relaxed text-white/70">x {s.principal.publicKey.x}<br />y {s.principal.publicKey.y}</div>
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 <Button kind="ghost" size="sm" onClick={forget}>Forget passkey</Button>
               </div>
@@ -132,8 +198,8 @@ export default function Onboard({ s }: { s: Session }) {
               <Stat label="Venue allowance" value={allowance === null ? "—" : allowance > 10n ** 30n ? "∞" : fmtTokens(allowance, 0)} sub="owner action" />
             </div>
             <p className="text-xs leading-relaxed text-white/50">The demo venue pulls tokens from your account when the agent trades. Approving it is an <em>owner</em> action: your passkey signs, {s.tx.mode.kind === "wallet" ? "your wallet pays" : "the relayer pays"}.</p>
-            <Button onClick={approve} disabled={!s.principal || ready} busy={!!busy && !!s.principal} icon={<Fingerprint className="h-4 w-4" />} className="w-full">
-              {ready ? "Venue approved" : busy && s.principal ? busy : "Approve venue with passkey"}
+            <Button onClick={s.privyPrincipal ? privyApprove : approve} disabled={!s.principal || ready} busy={!!busy && !!s.principal} icon={s.privyPrincipal ? <LockKeyhole className="h-4 w-4" /> : <Fingerprint className="h-4 w-4" />} className="w-full">
+              {ready ? "Venue approved" : busy && s.principal ? busy : s.privyPrincipal ? "Approve venue (session signer, no prompt)" : "Approve venue with passkey"}
             </Button>
             {ready && <Button kind="subtle" className="w-full" onClick={() => s.go("grant")} icon={<ArrowRight className="h-4 w-4" />}>Next: grant a mandate</Button>}
           </div>
