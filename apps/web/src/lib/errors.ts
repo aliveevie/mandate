@@ -8,7 +8,11 @@ export interface FriendlyError {
   /** True when the user cancelled a wallet or passkey prompt: nothing was sent, nothing is wrong. */
   cancelled: boolean;
   raw: string;
+  /** Optional call to action (e.g. the faucet). */
+  action?: { label: string; href: string };
 }
+
+export const FAUCET_URL = "https://faucet.monad.xyz";
 
 const CANCEL_PATTERNS = [/user rejected/i, /user denied/i, /rejected the request/i, /cancel(l)?ed/i, /NotAllowedError/i, /operation either timed out or was not allowed/i, /4001/];
 
@@ -27,10 +31,10 @@ export function friendlyError(e: unknown): FriendlyError {
     };
   }
   if (lower.includes("insufficient funds")) {
-    return { title: "Not enough MON for gas", detail: "The paying wallet cannot cover this transaction's gas on Monad testnet. Top it up at faucet.monad.xyz.", cancelled: false, raw };
+    return { title: "Not enough MON for gas", detail: "The paying wallet cannot cover this transaction's gas on Monad testnet.", cancelled: false, raw, action: { label: "Get testnet MON", href: FAUCET_URL } };
   }
   if (err?.data?.error === "RelayerLowFunds") {
-    return { title: "Gasless relayer is low on MON", detail: err.data.message, cancelled: false, raw };
+    return { title: "Gasless relayer is low on MON", detail: err.data.message, cancelled: false, raw, action: { label: "Get testnet MON", href: FAUCET_URL } };
   }
   if (/PrivyNotConfigured|NoEmbeddedWallet|NoAgentForMandate/.test(err?.data?.error ?? "")) {
     return { title: err!.data!.error!, detail: err?.data?.message, cancelled: false, raw };

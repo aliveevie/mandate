@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Bot, Fingerprint, ShieldCheck, Sparkles, Check, AlertTriangle, Fuel } from "lucide-react";
 import { Logo, Pill } from "./primitives";
 import { WalletButton } from "./WalletButton";
+import { FaucetButton, FAUCET_URL } from "./FaucetButton";
 import type { PublicConfig } from "../lib/api";
 
 export type Screen = "onboard" | "grant" | "agent" | "reputation";
@@ -30,6 +31,7 @@ export function Shell({ cfg, screen, go, done, children, principalAddr, mode }: 
               <Fuel className="h-3 w-3" /> relayer {(Number(cfg.relayer.balance) / 1e18).toFixed(2)} MON
             </span>
             <span className="hidden text-[11px] text-white/45 xl:inline">{mode}</span>
+            <FaucetButton chainId={cfg.chainId} />
             <WalletButton chainId={cfg.chainId} />
           </div>
         </div>
@@ -67,7 +69,7 @@ export function Shell({ cfg, screen, go, done, children, principalAddr, mode }: 
             <div className="mb-5 flex items-start gap-3 rounded-2xl border border-warn/30 bg-warn/10 px-4 py-3 text-sm text-amber-100">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" />
               <div>
-                <span className="font-semibold">The gasless relayer is low on testnet MON</span> ({(Number(cfg.relayer.balance) / 1e18).toFixed(3)} MON). Connect a wallet to pay your own gas, or fund the relayer at <span className="mono">{cfg.relayer.address}</span> from <a className="underline" href="https://faucet.monad.xyz" target="_blank" rel="noreferrer">faucet.monad.xyz</a>.
+                <span className="font-semibold">The gasless relayer is low on testnet MON</span> ({(Number(cfg.relayer.balance) / 1e18).toFixed(3)} MON). Connect a wallet to pay your own gas, or fund the relayer at <span className="mono">{cfg.relayer.address}</span> from <a className="underline" href={FAUCET_URL} target="_blank" rel="noreferrer">faucet.monad.xyz</a>.
               </div>
             </div>
           )}

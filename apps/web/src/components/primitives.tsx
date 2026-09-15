@@ -73,6 +73,11 @@ export function ErrorNotice({ error, className = "" }: { error: import("../lib/e
     <Notice kind={kind} className={className}>
       <div className="font-semibold">{error.title}</div>
       {error.detail && <div className="mt-0.5 text-xs opacity-90">{error.detail}</div>}
+      {error.action && (
+        <a className="mt-2 inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/20" href={error.action.href} target="_blank" rel="noreferrer">
+          {error.action.label} <ExternalLink className="h-3 w-3" />
+        </a>
+      )}
       {!error.cancelled && error.raw && error.raw !== error.title && (
         <details className="mt-1.5">
           <summary className="cursor-pointer text-[11px] opacity-60 hover:opacity-100">technical details</summary>
