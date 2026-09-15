@@ -7,6 +7,10 @@ import { config } from "./config.js";
 import { chain, deployAccount, deployer, explorerTx, mandateAddresses, publicClient, relayExecute, relayerBalance, sdk } from "./chain.js";
 import { activateAgent, agentForMandate, agentState, forceOutOfBounds, getAgent, listAgents, prepareAgent, provisionAgent, publicView, startAgent, stopAgent, sweepAll } from "./agents.js";
 import { fetchAttestations } from "./envio.js";
+import { privy, publicPrivyConfig, principalByAccount, principalByUser, rememberPrincipal } from "./privy.js";
+import { mirrorPolicy, probePolicy, revokePolicy } from "./agents.js";
+import { executeTypedData, SignerAccountAbi, type Mandate } from "@ibxlab/mandate";
+import { deployerWallet, erc20Abi } from "./chain.js";
 
 const app = express();
 app.use(express.json({ limit: "256kb" }));
@@ -33,6 +37,7 @@ app.get(
       relayer: { address: deployer.address, balance, min: config.demo.relayerMin, low: balance < config.demo.relayerMin },
       explorer: "https://testnet.monadexplorer.com",
       envio: !!config.envioUrl,
+      privy: publicPrivyConfig(),
     });
   }),
 );
@@ -96,7 +101,8 @@ app.post(
     };
     if (sdk.mandate.hash(signed.mandate) !== signed.hash) return json(res, { error: "hash mismatch" }, 400);
     const tx = await sdk.mandate.grant(signed);
-    json(res, { hash: tx.hash, explorer: explorerTx(tx.hash), mandateHash: signed.hash });
+    const policy = await mirrorPolicy(signed.hash, signed.mandate).catch((e) => ({ error: (e as Error).message }));
+    json(res, { hash: tx.hash, explorer: explorerTx(tx.hash), mandateHash: signed.hash, policy });
   }),
 );
 
@@ -111,6 +117,7 @@ app.post(
       const live = getAgent(a.id);
       if (live) stopAgent(live);
     }
+    await revokePolicy(mandateHash).catch(() => undefined);
     json(res, { hash: tx.hash, explorer: explorerTx(tx.hash) });
   }),
 );
@@ -129,7 +136,7 @@ app.post(
 );
 
 // Wallet mode: the user's wallet registers the ERC-8004 identity and funds the key; the relayer pays nothing.
-app.post("/api/agents/prepare", (_req, res) => json(res, prepareAgent(), 201));
+app.post("/api/agents/prepare", wrap(async (_req, res) => json(res, await prepareAgent(), 201)));
 app.post(
   "/api/agents/activate",
   wrap(async (req, res) => {
@@ -225,6 +232,126 @@ app.get(
   }),
 );
 
+// ------------------------------------------------------------------ Privy: policy mirror for wallet-mode grants, probe
+
+app.post(
+  "/api/mandates/:hash/mirror",
+  wrap(async (req, res) => {
+    const hash = req.params.hash as Hex;
+    const m = await sdk.mandate.get(hash);
+    const policy = await mirrorPolicy(hash, m);
+    json(res, { policy: policy ?? null });
+  }),
+);
+
+app.post(
+  "/api/mandates/:hash/revoked",
+  wrap(async (req, res) => {
+    const hash = req.params.hash as Hex;
+    const s = await sdk.mandate.state(hash);
+    if (!s.revoked) return json(res, { error: "not revoked on-chain" }, 400);
+    await revokePolicy(hash);
+    json(res, { ok: true });
+  }),
+);
+
+app.post(
+  "/api/agents/:id/policy-probe",
+  wrap(async (req, res) => {
+    const { mandateHash } = req.body as { mandateHash?: Hex };
+    const a = await resolveAgent(req.params.id, mandateHash);
+    if (!a) return json(res, { error: "unknown agent" }, 404);
+    json(res, await probePolicy(a, deployer.address));
+  }),
+);
+
+// ------------------------------------------------------------------ Privy: session-signer principals (no passkey device)
+
+const requirePrivy = (_req: Request, res: Response, next: NextFunction) =>
+  privy ? next() : json(res, { error: "PrivyNotConfigured", message: "Set PRIVY_APP_ID, PRIVY_APP_SECRET, PRIVY_AUTHORIZATION_KEY and PRIVY_KEY_QUORUM_ID" }, 503);
+
+async function sessionPrincipal(identityToken: string, account?: Address) {
+  const { userId, wallet } = await privy!.sessions.embeddedWallet(identityToken);
+  const stored = account ? principalByAccount(account) : principalByUser(userId);
+  if (!stored || stored.userId !== userId) throw Object.assign(new Error("No principal for this user"), { status: 404 });
+  if (!wallet?.delegated) throw Object.assign(new Error("The embedded wallet has not delegated a session signer yet"), { status: 409 });
+  return { stored, principal: privy!.sessions.principal({ walletId: stored.walletId, owner: stored.owner, account: stored.account }) };
+}
+
+/** Create (or resume) the caller's SignerAccount owned by their Privy embedded wallet, plus the signer scope policy. */
+app.post(
+  "/api/privy/principal",
+  requirePrivy,
+  requireFunds,
+  wrap(async (req, res) => {
+    const { identityToken } = req.body as { identityToken: string };
+    const { userId, wallet } = await privy!.sessions.embeddedWallet(identityToken);
+    if (!wallet) return json(res, { error: "NoEmbeddedWallet", message: "This Privy user has no Ethereum embedded wallet" }, 400);
+    const existing = principalByUser(userId);
+    if (existing) return json(res, { ...existing, delegated: wallet.delegated, signerId: privy!.keyQuorumId, resumed: true });
+    const account = await sdk.passkey.deploySignerAccount(wallet.address);
+    const mintTx = await deployerWallet.writeContract({ address: config.demo.asset, abi: erc20Abi, functionName: "mint", args: [account, config.demo.mintAmount] });
+    await publicClient.waitForTransactionReceipt({ hash: mintTx });
+    const scope = await privy!.sessions.createScopePolicy({ account });
+    const p = { account, owner: wallet.address, walletId: wallet.walletId, userId, scopePolicyId: scope.policyId, createdAt: Date.now() };
+    rememberPrincipal(p);
+    json(res, { ...p, delegated: wallet.delegated, signerId: privy!.keyQuorumId, scopeRules: scope.policy.rules, mintTx, resumed: false }, 201);
+  }),
+);
+
+/** Owner action without a prompt: approve the demo venue, signed by the session signer as EIP-712 Execute. */
+app.post(
+  "/api/privy/approve",
+  requirePrivy,
+  requireFunds,
+  wrap(async (req, res) => {
+    const { identityToken, account } = req.body as { identityToken: string; account: Address };
+    const { stored, principal } = await sessionPrincipal(identityToken, account);
+    const call = { target: config.demo.asset, value: 0n, data: (await import("viem")).encodeFunctionData({ abi: (await import("viem")).parseAbi(["function approve(address,uint256) returns (bool)"]), functionName: "approve", args: [config.demo.venue, 2n ** 256n - 1n] }) };
+    const nonce = await publicClient.readContract({ address: stored.account, abi: SignerAccountAbi, functionName: "nonce" });
+    const signature = await principal.signTypedData(executeTypedData(stored.account, chain.id, call, nonce));
+    const { request } = await publicClient.simulateContract({ address: stored.account, abi: SignerAccountAbi, functionName: "execute", args: [call, signature], account: deployer });
+    const hash = await deployerWallet.writeContract(request);
+    await publicClient.waitForTransactionReceipt({ hash });
+    json(res, { hash, explorer: explorerTx(hash) });
+  }),
+);
+
+/** Grant without a prompt: the session signer signs the Mandate typed data, the relayer submits, the policy is mirrored. */
+app.post(
+  "/api/privy/grant",
+  requirePrivy,
+  requireFunds,
+  wrap(async (req, res) => {
+    const { identityToken, account, draft } = req.body as { identityToken: string; account: Address; draft: { agentId: string; agentKey: Address; targets: { address: Address; selectors: string[] }[]; asset: Address; spendCap: string; perBlockCap: string; maxDrawdownBps: number; validUntil: number } };
+    const { principal } = await sessionPrincipal(identityToken, account);
+    const d = sdk.mandate.build({
+      agentId: BigInt(draft.agentId), agentKey: draft.agentKey, targets: draft.targets, asset: draft.asset,
+      spendCap: BigInt(draft.spendCap), perBlockCap: BigInt(draft.perBlockCap), maxDrawdownBps: draft.maxDrawdownBps, validUntil: draft.validUntil,
+    });
+    const signed = await sdk.mandate.sign(d, principal);
+    const tx = await sdk.mandate.grant(signed);
+    const policy = await mirrorPolicy(signed.hash, signed.mandate as Mandate).catch((e) => ({ error: (e as Error).message }));
+    json(res, { hash: tx.hash, explorer: explorerTx(tx.hash), mandateHash: signed.hash, policy });
+  }),
+);
+
+/** Revoke without a prompt: EIP-712 Revoke on the SignerAccount domain, signed by the session signer. */
+app.post(
+  "/api/privy/revoke",
+  requirePrivy,
+  requireFunds,
+  wrap(async (req, res) => {
+    const { identityToken, account, mandateHash } = req.body as { identityToken: string; account: Address; mandateHash: Hex };
+    const { principal } = await sessionPrincipal(identityToken, account);
+    const tx = await sdk.mandate.revoke(mandateHash, principal);
+    const holder = await agentForMandate(mandateHash).catch(() => undefined);
+    if (holder) stopAgent(holder);
+    await revokePolicy(mandateHash).catch(() => undefined);
+    json(res, { hash: tx.hash, explorer: explorerTx(tx.hash) });
+  }),
+);
+
 // ------------------------------------------------------------------ static UI (production)
 
 const publicDir = resolve(process.cwd(), config.publicDir);
@@ -238,8 +365,9 @@ if (existsSync(publicDir)) {
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (MandateError.is(err)) return json(res, { error: err.name, args: err.args.map(String), message: err.message }, 422);
   const message = (err as Error)?.message ?? String(err);
-  console.error(message);
-  json(res, { error: "internal", message: message.slice(0, 500) }, 500);
+  const status = (err as { status?: number })?.status ?? 500;
+  if (status >= 500) console.error(message);
+  json(res, { error: status >= 500 ? "internal" : "request", message: message.slice(0, 500) }, status);
 });
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {

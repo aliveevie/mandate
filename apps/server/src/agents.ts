@@ -1,7 +1,10 @@
-import { MandateError, type Agent, type MandateState } from "@ibxlab/mandate";
+import { MandateError, type Agent, type Mandate, type MandateState } from "@ibxlab/mandate";
 import { createWalletClient, encodeFunctionData, http, parseAbi, type Address, type Hex } from "viem";
 import { monadTestnet } from "viem/chains";
-import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import type { Account } from "viem";
+import { privy } from "./privy.js";
+import type { MandatePolicy } from "@ibxlab/mandate/privy";
 import { config } from "./config.js";
 import { deployer, deployerWallet, identityOwnerOf, publicClient, registerAgentIdentity, sdk, wait } from "./chain.js";
 
@@ -27,13 +30,18 @@ export interface DemoAgent {
   fundedBy: Address;
   /** Wallet-mode agents are created pending and activated once the wallet has registered + funded them. */
   pending?: boolean;
+  /** Who holds the executing key: an in-memory demo key, or a Privy server wallet (TEE, never exported). */
+  custody: "local" | "privy";
+  privyWallet?: { walletId: string; address: Address };
+  /** The Privy policy currently attached to the agent wallet, mirroring the running mandate. */
+  policy?: { policyId: string; mandateHash: Hex; rules: MandatePolicy["rules"]; revoked: boolean };
   createdAt: number;
   running: boolean;
   mandateHash?: Hex;
   stopReason?: string;
   feed: FeedItem[];
-  /** In-memory demo key. PR-2 replaces this with a Privy server wallet. */
-  account: PrivateKeyAccount;
+  /** Signs agent transactions: a local demo key, or a viem account backed by the Privy server wallet. */
+  account: Account;
   timer?: NodeJS.Timeout;
   busy?: boolean;
 }
@@ -66,6 +74,9 @@ export function publicView(a: DemoAgent, mandateHash?: Hex) {
     fundTx: a.fundTx,
     fundedBy: a.fundedBy,
     pending: !!a.pending,
+    custody: a.custody,
+    privyWalletId: a.privyWallet?.walletId,
+    policy: a.policy,
     createdAt: a.createdAt,
     running: a.running,
     mandateHash: a.mandateHash,
@@ -75,8 +86,17 @@ export function publicView(a: DemoAgent, mandateHash?: Hex) {
 }
 
 /** Provision: fresh executing key, funded for gas, registered as an ERC-8004 identity. */
+/** Mint an executing key: a Privy server wallet when Privy is configured, otherwise an in-memory demo key. */
+async function newAgentKey(label: string): Promise<{ account: Account; custody: "local" | "privy"; privyWallet?: { walletId: string; address: Address } }> {
+  if (privy) {
+    const ref = await privy.agents.createWallet({ label });
+    return { account: privy.agents.account(ref), custody: "privy", privyWallet: ref };
+  }
+  return { account: privateKeyToAccount(generatePrivateKey()), custody: "local" };
+}
+
 export async function provisionAgent(label = "demo-agent"): Promise<DemoAgent> {
-  const account = privateKeyToAccount(generatePrivateKey());
+  const { account, custody, privyWallet } = await newAgentKey(label);
   // Plain transfers have been seen reverting once on Monad testnet; retry before giving up.
   let fundTx: Hex | undefined;
   let lastErr: unknown;
@@ -101,26 +121,28 @@ export async function provisionAgent(label = "demo-agent"): Promise<DemoAgent> {
     fundedBy: deployer.address,
     createdAt: Date.now(),
     running: false,
-    feed: [{ at: Date.now(), kind: "info", message: `Agent ${agentId} registered in ERC-8004 and funded with gas` }],
+    custody,
+    privyWallet,
+    feed: [{ at: Date.now(), kind: "info", message: custody === "privy" ? `Agent ${agentId} registered in ERC-8004; its key is Privy server wallet ${privyWallet?.walletId}` : `Agent ${agentId} registered in ERC-8004 and funded with gas` }],
     account,
   };
   agents.set(agent.id, agent);
   return agent;
 }
 
-const pendingKeys = new Map<Address, PrivateKeyAccount>();
+const pendingKeys = new Map<Address, { account: Account; custody: "local" | "privy"; privyWallet?: { walletId: string; address: Address } }>();
 
 /** Wallet mode, step 1: mint an executing key. The user's wallet registers the identity and funds it. */
-export function prepareAgent(): { agentKey: Address } {
-  const account = privateKeyToAccount(generatePrivateKey());
-  pendingKeys.set(account.address, account);
-  return { agentKey: account.address };
+export async function prepareAgent(): Promise<{ agentKey: Address; custody: "local" | "privy" }> {
+  const k = await newAgentKey("mandate agent");
+  pendingKeys.set(k.account.address, k);
+  return { agentKey: k.account.address, custody: k.custody };
 }
 
 /** Wallet mode, step 2: verify the wallet's work on-chain and activate the agent. */
 export async function activateAgent(input: { agentKey: Address; agentId: bigint; registerTx: Hex; fundTx: Hex; fundedBy: Address }): Promise<DemoAgent> {
-  const account = pendingKeys.get(input.agentKey);
-  if (!account) throw new Error("Unknown pending agent key");
+  const k = pendingKeys.get(input.agentKey);
+  if (!k) throw new Error("Unknown pending agent key");
   const [owner, balance] = await Promise.all([identityOwnerOf(input.agentId), publicClient.getBalance({ address: input.agentKey })]);
   if (!owner) throw new Error(`ERC-8004 agent ${input.agentId} is not registered`);
   if (balance === 0n) throw new Error("Agent key has no gas");
@@ -134,8 +156,10 @@ export async function activateAgent(input: { agentKey: Address; agentId: bigint;
     fundedBy: input.fundedBy,
     createdAt: Date.now(),
     running: false,
-    feed: [{ at: Date.now(), kind: "info", message: `Agent ${input.agentId} registered in ERC-8004 by ${input.fundedBy.slice(0, 8)}… and funded from that wallet` }],
-    account,
+    custody: k.custody,
+    privyWallet: k.privyWallet,
+    feed: [{ at: Date.now(), kind: "info", message: `Agent ${input.agentId} registered in ERC-8004 by ${input.fundedBy.slice(0, 8)}… and funded from that wallet${k.custody === "privy" ? `; key is Privy server wallet ${k.privyWallet?.walletId}` : ""}` }],
+    account: k.account,
   };
   agents.set(agent.id, agent);
   return agent;
@@ -303,4 +327,39 @@ function min(...xs: bigint[]) {
 }
 function fmt(x: bigint) {
   return (Number(x / 10n ** 15n) / 1000).toString();
+}
+
+// ------------------------------------------------------------------ Privy policy mirror
+
+/** After a grant lands: write the same limits as a policy on the agent's Privy wallet. No-op for local keys. */
+export async function mirrorPolicy(mandateHash: Hex, mandate: Mandate): Promise<DemoAgent["policy"] | undefined> {
+  const a = await agentForMandate(mandateHash);
+  if (!a || !privy || !a.privyWallet) return undefined;
+  const { policyId, policy } = await privy.agents.mirrorMandate({ wallet: a.privyWallet, mandate, mandateHash });
+  a.policy = { policyId, mandateHash, rules: policy.rules, revoked: false };
+  push(a, { at: Date.now(), kind: "info", message: `Privy policy ${policyId} now mirrors this mandate on the agent wallet`, mandateHash });
+  return a.policy;
+}
+
+/** After an on-chain revoke: the wallet policy becomes deny-all. */
+export async function revokePolicy(mandateHash: Hex): Promise<void> {
+  const a = await agentForMandate(mandateHash).catch(() => undefined);
+  if (!a || !privy || !a.policy || a.policy.mandateHash !== mandateHash || a.policy.revoked) return;
+  await privy.agents.revokeMirror({ policyId: a.policy.policyId, mandateHash });
+  a.policy.revoked = true;
+  push(a, { at: Date.now(), kind: "info", message: `Privy policy ${a.policy.policyId} set to deny-all after revocation`, mandateHash });
+}
+
+/** Ask Privy to sign a transaction the policy forbids (a plain transfer). The refusal is the proof. */
+export async function probePolicy(a: DemoAgent, to: Address) {
+  if (!privy || !a.privyWallet) throw new Error("Agent key is not a Privy server wallet");
+  const r = await privy.agents.probe({ wallet: a.privyWallet, to });
+  push(a, {
+    at: Date.now(),
+    kind: r.blocked ? "rejected" : "info",
+    message: r.blocked ? `Privy refused to sign a transfer outside the mandate policy: ${(r.reason ?? "").slice(0, 140)}` : `Privy signed a transfer (no policy attached) ${r.hash}`,
+    mandateHash: a.mandateHash,
+    tx: r.hash,
+  });
+  return r;
 }
