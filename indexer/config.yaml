@@ -45,6 +45,13 @@ chains:
     # present; change `for: sync` to `for: fallback` there to sync over HyperSync and keep RPC as backup.
     rpc:
       - url: https://testnet-rpc.monad.xyz
+        # Monad's public RPC caps eth_getLogs at 100 blocks and ~15 req/s: never ask for more than that.
+        initial_block_interval: 100
+        interval_ceiling: 100
+        backoff_multiplicative: 0.5
+        acceleration_additive: 0
+        backoff_millis: 1000
+        query_timeout_millis: 20000
         for: sync
     contracts:
       - name: MandateRegistry
