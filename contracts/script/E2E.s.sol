@@ -106,19 +106,24 @@ contract E2E is Script {
         account.revokeMandate(h, _webauthnSign(account.revokeDigest(h, account.nonce())));
         console2.log("revoked          ", !registry.isActive(h));
 
-        // 9. Attestor writes reputation (deployer is the initial attestor)
-        adapter.attest(
-            m.agentId,
-            IERC8004ReputationAdapter.Attestation({
-                complianceScore: 90,
-                tripCount: 1,
-                executedCount: 2,
-                realisedPnlBps: -2500,
-                windowStart: uint64(block.timestamp - 600),
-                windowEnd: uint64(block.timestamp),
-                evidenceHash: keccak256(abi.encode(h, uint256(2), uint256(1)))
-            })
-        );
+        // 9. Attestor writes reputation. Before PR-3 the deployer is the attestor; once the CRE receiver holds the
+        //    role (script/DeployCREReceiver.s.sol) only the workflow can write, so this step is skipped.
+        if (adapter.attestor() != msg.sender) {
+            console2.log("attestor is the CRE receiver; skipping direct attest", adapter.attestor());
+        } else {
+            adapter.attest(
+                m.agentId,
+                IERC8004ReputationAdapter.Attestation({
+                    complianceScore: 90,
+                    tripCount: 1,
+                    executedCount: 2,
+                    realisedPnlBps: -2500,
+                    windowStart: uint64(block.timestamp - 600),
+                    windowEnd: uint64(block.timestamp),
+                    evidenceHash: keccak256(abi.encode(h, uint256(2), uint256(1)))
+                })
+            );
+        }
         console2.log("attestations     ", adapter.attestationCount(m.agentId));
 
         vm.stopBroadcast();
