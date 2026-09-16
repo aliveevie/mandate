@@ -134,9 +134,59 @@ chain list yet; deploying to a DON uses the `production-settings` target and the
 
 ## Mera PRF
 
-*Ships in the `feat/mera-prf` pull request.*
+Ships in the `feat/mera-prf` pull request. **One passkey, many keys**: the passkey that owns the `PasskeyAccount` also
+does two jobs that are not wallet signing, each under its own PRF namespace, with nothing derived ever stored.
 
-Two non-account uses of the passkey's PRF output with namespaced salts:
+| Namespace (PRF salt = `sha256(namespace)`) | Derivation | Job |
+|---|---|---|
+| `mandate:policy:<principal>:<nonce>` | PRF → HKDF-SHA-256 (`mandate:prf:policy-key:v1`) → AES-256-GCM key | Encrypts the agent's strategy parameters. Ciphertext lives in a dumb blob store; the mandate's onchain `policyHash` commits to it. |
+| `mandate:agent-id:<n>` | PRF → HKDF-SHA-256 (`mandate:prf:agent-identity:v1:<n>`) → secp256k1 key | Owns agent *n*'s ERC-8004 identity. Unlinkable across agents; re-derivable from the passkey on any device. |
 
-- `mandate:policy:<mandateHash>` derives, through HKDF, an AES-GCM key that encrypts the agent's strategy and running context. The mandate's `policyHash` commits to the ciphertext. Only the principal's passkey can decrypt.
-- `mandate:agent-id:<n>` derives a deterministic keypair used as the ERC-8004 identity owner for agent `n`, unlinkable across agents and reconstructible from the passkey alone.
+Correctness rules, enforced by code and tests (`sdk/test/prf.test.ts`): derivation ≠ encryption (HKDF for keys, AES-GCM for
+data), every namespace is a distinct PRF salt so outputs are unrelated at the authenticator, PRF outputs and derived keys
+are zeroized after use, and no secret is persisted anywhere (no server DB, no localStorage, no env).
+
+### Library
+
+`@category-labs/mera@0.2.0` (Category Labs; published from GitHub Actions with SLSA provenance, tarball checksum and
+sources verified against tag `v0.2.0`). The SDK uses `getPasskeyPrfOutput` for the ceremony with an explicit namespaced
+`prfSalt`, `createSecp256k1SigningSession` + `getEvmAddress` + `toViemAccount` for the per-agent identity, and WebCrypto
+for HKDF and AES-GCM. Passkeys are created with the PRF extension requested so synced platform passkeys can evaluate PRF.
+
+```ts
+import { encryptPolicy, decryptPolicy, deriveAgentIdentity, PRF_NAMESPACE, policyHashOf } from "@ibxlab/mandate/prf";
+
+// 1. seal the strategy before signing the mandate (nonce = registry.nonces(principal))
+const { vault, policyHash } = await encryptPolicy({ rpId, credentialId, principal, nonce, policy: { strategy: "mean-reversion", maxSlippageBps: 25 } });
+const draft = client.mandate.build({ ...terms, policyHash });      // the mandate commits to the ciphertext
+await fetch(`/api/blobs/${policyHash}`, { method: "PUT", body: JSON.stringify(vault) }); // any dumb store
+
+// 2. the agent's identity: deterministic, never stored
+const id = await deriveAgentIdentity({ rpId, credentialId, agentId });
+await fetch(`/api/agents/${agentId}/claim`, { method: "POST", body: JSON.stringify({ owner: id.address }) }); // relayer transfers the ERC-8004 NFT
+id.end();
+
+// 3. on any device: only the passkey and the mandate hash are needed
+const { policy } = await decryptPolicy({ rpId, vault: await (await fetch(`/api/blobs/${m.policyHash}`)).json() });
+```
+
+### In the reference app
+
+- **Grant** — "Agent strategy, encrypted with your passkey": edits the policy, seals it (PRF ceremony), puts `policyHash`
+  in the mandate, stores the vault at `PUT /api/blobs/:policyHash` (the server validates that the hash matches the
+  vault's canonical encoding and can neither read nor alter it). "Own this identity with my passkey" derives
+  `mandate:agent-id:<n>` and calls `POST /api/agents/:id/claim`; the relayer transfers the ERC-8004 identity to that key.
+- **Passkey screen → "One passkey, many keys"** — the cross-device check: paste a mandate hash (or open
+  `/?verify=<mandateHash>`), press "Re-derive with passkey". With no local state, the app reads the mandate's
+  `policyHash` onchain, fetches the vault, decrypts it, re-derives the agent identity and compares it with `ownerOf(agentId)`
+  in the ERC-8004 registry. "Simulate a fresh device" wipes local storage and reloads into that flow.
+
+### Proof
+
+`apps/web/e2e/webauthn.mjs` drives Chrome with a CDP virtual authenticator (`hasPrf: true`): it claims the identity,
+grants with an encrypted policy, wipes every byte of local state, reloads with only the mandate hash and asserts that the
+decrypted policy and the re-derived identity equal what was created, and that the identity equals the onchain owner.
+Chrome's virtual authenticator cannot export its PRF secret, so the automated run proves *zero local state → same keys*;
+the true two-device run (a synced passkey on a second phone or laptop, same decrypted policy, same identity address) is the
+on-camera step.
+
