@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { PasskeyAccountAbi } from "@ibxlab/mandate";
 import { encodeFunctionData, parseAbi } from "viem";
-import { ArrowRight, Fingerprint, KeyRound, ShieldCheck, Cpu, Wallet, Zap, Mail, LockKeyhole } from "lucide-react";
+import { ArrowRight, Fingerprint, KeyRound, ShieldCheck, Cpu, Wallet, Zap, Mail, LockKeyhole, Smartphone, Layers } from "lucide-react";
 import { usePrivySession } from "../lib/privy";
 import type { Session } from "../App";
 import { friendlyError, type FriendlyError } from "../lib/errors";
 import { fmtTokens, getClient, getPublicClient, rpId } from "../lib/client";
 import { api } from "../lib/api";
 import { useToast } from "../lib/toast";
-import { Address, Button, Card, Notice, Pill, Stat, ErrorNotice } from "../components/primitives";
+import { Address, Button, Card, Notice, Pill, Stat, ErrorNotice, Field, inputCls } from "../components/primitives";
+import { crossDeviceCheck, prfSupported, type CrossDeviceResult } from "../lib/prf";
+import type { Hex } from "viem";
 
 const erc20 = parseAbi(["function approve(address,uint256) returns (bool)", "function balanceOf(address) view returns (uint256)", "function allowance(address,address) view returns (uint256)"]);
 
@@ -24,6 +26,29 @@ export default function Onboard({ s }: { s: Session }) {
   const privy = usePrivySession(s.cfg.privy.enabled);
   const [privyStep, setPrivyStep] = useState<string | null>(null);
   const [privyInfo, setPrivyInfo] = useState<{ account: string; owner: string; scopePolicyId: string; delegated: boolean; signerId: string } | null>(null);
+  // Mera PRF cross-device check. `?verify=<mandateHash>` lets a fresh device (or a wiped profile) start straight here.
+  const verifyParam = new URLSearchParams(window.location.search).get("verify");
+  const [verifyHash, setVerifyHash] = useState<string>(verifyParam ?? s.mandateHash ?? "");
+  const [prfCap, setPrfCap] = useState<boolean | null>(null);
+  const [xd, setXd] = useState<CrossDeviceResult | null>(null);
+  const [xdBusy, setXdBusy] = useState(false);
+  const [xdErr, setXdErr] = useState<FriendlyError | null>(null);
+  useEffect(() => { void prfSupported().then(setPrfCap); }, []);
+  useEffect(() => { if (!verifyParam && s.mandateHash) setVerifyHash(s.mandateHash); }, [s.mandateHash]);
+
+  const runCrossDevice = async () => {
+    setXdErr(null); setXd(null);
+    if (!/^0x[0-9a-fA-F]{64}$/.test(verifyHash)) { setXdErr(friendlyError(new Error("Paste the 32-byte mandate hash from the device that granted it."))); return; }
+    setXdBusy(true);
+    try {
+      // No local state is used: the credential is discovered by the platform, the vault comes from the blob store.
+      setXd(await crossDeviceCheck(s.cfg, pc, verifyHash as Hex));
+    } catch (e) { setXdErr(friendlyError(e)); } finally { setXdBusy(false); }
+  };
+  const simulateFreshDevice = () => {
+    try { localStorage.clear(); sessionStorage.clear(); } catch { /* ignore */ }
+    window.location.assign(`${window.location.pathname}?verify=${verifyHash}`);
+  };
 
   const refresh = async () => {
     if (!s.principal) return;
@@ -206,6 +231,47 @@ export default function Onboard({ s }: { s: Session }) {
           </div>
         </Card>
       </div>
+
+      <Card className="rise rise-3" title="One passkey, many keys" icon={<Layers className="h-4 w-4" />} right={<Pill tone={prfCap === false ? "warn" : "brand"} dot>{prfCap === false ? "PRF not advertised by this browser" : "Mera PRF"}</Pill>}>
+        <div className="grid gap-6 lg:grid-cols-5">
+          <div className="space-y-3 lg:col-span-2">
+            <p className="text-sm leading-relaxed text-white/65">The same passkey that owns your account also does two jobs that are <em>not</em> wallet signing. Each uses its own PRF namespace, so the outputs are unrelated, and nothing derived is ever stored.</p>
+            <ul className="space-y-2 text-xs leading-relaxed text-white/60">
+              <li className="rounded-xl bg-white/[.04] p-3 ring-1 ring-white/[.06]"><span className="mono text-brand-2">mandate:policy:&lt;principal&gt;:&lt;nonce&gt;</span><br />HKDF → AES-256-GCM key for the agent's encrypted strategy. The mandate's <span className="mono">policyHash</span> commits to the ciphertext.</li>
+              <li className="rounded-xl bg-white/[.04] p-3 ring-1 ring-white/[.06]"><span className="mono text-brand-2">mandate:agent-id:&lt;n&gt;</span><br />HKDF → secp256k1 key that owns agent n's ERC-8004 identity. Unlinkable across agents, re-derivable on any device the passkey syncs to.</li>
+            </ul>
+            <p className="text-[11px] text-white/45">Ceremony: <span className="mono">@category-labs/mera</span> <span className="mono">getPasskeyPrfOutput</span> with a namespaced salt; keys via WebCrypto HKDF; identities via Mera secp256k1 signing sessions.</p>
+          </div>
+          <div className="space-y-3 lg:col-span-3">
+            <div className="flex items-center gap-2 text-sm font-semibold"><Smartphone className="h-4 w-4 text-brand-2" /> Cross-device check</div>
+            <p className="text-xs leading-relaxed text-white/55">On another device (or after wiping this one), paste the mandate hash. With nothing but the passkey, the app fetches the vault by the mandate's onchain <span className="mono">policyHash</span>, decrypts it, re-derives the agent identity and compares it with the ERC-8004 owner onchain.</p>
+            <Field label="Mandate hash"><input className={`${inputCls} mono`} placeholder="0x…" value={verifyHash} onChange={(e) => setVerifyHash(e.target.value.trim())} /></Field>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={runCrossDevice} busy={xdBusy} icon={<Fingerprint className="h-4 w-4" />}>{xdBusy ? "Passkey PRF: re-deriving…" : "Re-derive with passkey"}</Button>
+              <Button kind="ghost" onClick={simulateFreshDevice} disabled={!/^0x[0-9a-fA-F]{64}$/.test(verifyHash)}>Simulate a fresh device (wipe local state)</Button>
+              {verifyParam && <Pill tone="warn" dot>fresh device: no local state</Pill>}
+            </div>
+            {xd && (
+              <div className="space-y-3 rounded-xl bg-black/30 p-4 ring-1 ring-white/[.06]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill tone={xd.policy ? "ok" : "warn"} dot>{xd.policy ? "policy decrypted" : "no policy"}</Pill>
+                  <Pill tone={xd.identityMatches ? "ok" : xd.onchainOwner ? "bad" : "warn"} dot>{xd.identityMatches ? "identity matches onchain owner" : xd.onchainOwner ? "identity differs from onchain owner" : "identity not claimed onchain"}</Pill>
+                  {xd.policy && xd.identityMatches && <Pill tone="brand" dot>Cross-device check passed</Pill>}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Stat label={`Agent #${xd.agentId} identity (derived now)`} value={<Address value={xd.derivedIdentity} chars={8} className="text-sm text-white" explorer={`${s.cfg.explorer}/address/${xd.derivedIdentity}`} />} sub={`namespace mandate:agent-id:${xd.agentId}`} />
+                  <Stat label="ERC-8004 owner (onchain)" value={xd.onchainOwner ? <Address value={xd.onchainOwner} chars={8} className="text-sm text-white" explorer={`${s.cfg.explorer}/address/${xd.onchainOwner}`} /> : "—"} sub={`credential ${xd.credentialId.slice(0, 14)}…`} />
+                </div>
+                <div>
+                  <div className="mb-1 text-[11px] uppercase tracking-wider text-white/40">Decrypted policy · policyHash {xd.policyHash.slice(0, 12)}…</div>
+                  {xd.policy ? <pre className="mono overflow-x-auto rounded-lg bg-black/40 p-3 text-[11px] leading-relaxed text-white/80">{JSON.stringify(xd.policy, null, 2)}</pre> : <div className="text-xs text-white/55">{xd.policyError}</div>}
+                </div>
+              </div>
+            )}
+            {xdErr && <ErrorNotice error={xdErr} />}
+          </div>
+        </div>
+      </Card>
 
       {err && <ErrorNotice error={err} />}
     </div>

@@ -36,6 +36,8 @@ export interface AgentView {
   pending?: boolean;
   custody?: "local" | "privy";
   privyWalletId?: string;
+  identityOwner?: `0x${string}`;
+  identityClaimTx?: string;
   policy?: { policyId: string; mandateHash: string; rules: { name: string; method: string; action: "ALLOW" | "DENY"; conditions: { field_source: string; field: string; operator: string; value: string | string[] }[] }[]; revoked: boolean };
   createdAt: number;
   running: boolean;
