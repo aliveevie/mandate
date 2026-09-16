@@ -1,0 +1,20 @@
+# CRE project settings for Mandate. Targets are selected with `--target` (or CRE_TARGET in .env).
+# Monad testnet is not in the CLI's built-in chain-selector list yet, so it is declared as an experimental chain.
+# The simulator uses `experimental-chains` automatically; deployed workflows use `rpcs`.
+staging-settings:
+  rpcs:
+    - chain-name: monad-testnet
+      url: https://testnet-rpc.monad.xyz
+  experimental-chains:
+    - chain-selector: 2183018362218727504   # monad-testnet (chain id 10143)
+      rpc-url: https://testnet-rpc.monad.xyz
+      forwarder: "0xB9F79d863261869B234c481D1f9A7af84AeAd192"   # MockKeystoneForwarder (simulate --broadcast)
+
+production-settings:
+  rpcs:
+    - chain-name: monad-testnet
+      url: https://testnet-rpc.monad.xyz
+  experimental-chains:
+    - chain-selector: 2183018362218727504
+      rpc-url: https://testnet-rpc.monad.xyz
+      forwarder: "0xF8344CFd5c43616a4366C34E3EEE75af79a74482"   # KeystoneForwarder (deployed workflows)

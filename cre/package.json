@@ -1,0 +1,25 @@
+{
+  "name": "@ibxlab/mandate-cre",
+  "private": true,
+  "type": "module",
+  "description": "Chainlink CRE workflow: mandate-reputation-attestor (the only writer of Mandate reputation)",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.scripts.json",
+    "test": "bun test",
+    "simulate": "cre workflow simulate ./mandate-reputation-attestor --target staging-settings --non-interactive --trigger-index 0",
+    "simulate:broadcast": "cre workflow simulate ./mandate-reputation-attestor --target staging-settings --non-interactive --trigger-index 0 --broadcast",
+    "verify-evidence": "bun run scripts/verify-evidence.ts"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "1.21.1",
+    "viem": "2.56.5",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/bun": "1.2.22",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "bun": ">=1.2.21"
+  }
+}

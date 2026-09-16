@@ -45,6 +45,10 @@ apps/server/dist/
 .envio/
 generated/
 cre/.cre/
+cre/node_modules/
+cre/**/tmp.js
+cre/**/tmp.wasm
+cre/**/.cre_build_tmp.js
 *.log
 
 # --- os / ide ---
@@ -60,3 +64,7 @@ Thumbs.db
 contracts/deployments/local.json
 site/
 apps/web/e2e/*.png
+
+# committed CRE simulation runs (override the *.log rule above)
+!cre/simulation.log
+!cre/simulation-broadcast.log

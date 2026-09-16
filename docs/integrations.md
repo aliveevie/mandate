@@ -67,9 +67,70 @@ pnpm --filter server e2e:privy    # server-wallet agent -> grant -> policy mirro
 
 ## Chainlink CRE
 
-*Ships in the `feat/cre` pull request.*
+Ships in the `feat/cre` pull request. The `mandate-reputation-attestor` workflow (`cre/`) is the **only writer of
+Mandate reputation**: its onchain identity, `CREAttestationReceiver`, holds the `ERC8004ReputationAdapter` Attestor role,
+so every score in the ERC-8004 Reputation Registry was computed by the DON from verifiable inputs. Agents cannot
+self-attest and neither can the deployer any more.
 
-The `mandate-reputation-attestor` workflow is the attestor. It fetches executions from the indexer, venue fills from the venue API, asks an LLM for a structured risk note, computes the compliance score, trip count and realised PnL, hashes the inputs into `evidenceHash`, and calls `ERC8004ReputationAdapter.attest`. Because only the attestor can write reputation, the workflow is the trust layer's single writer.
+### What one run does
+
+1. **Window** — reads the chain head through the EVM capability; the window is the last `windowSeconds`.
+2. **Discover** — merges configured seeds, the reference API (`/api/agents`), a bounded scan of the freshest blocks for
+   `MandateGranted` / `MandateExecuted` / `Tripped`, and, per agent, the Envio GraphQL indexer (`Execution`, `BreakerEvent`,
+   `Mandate` for the window). Indexer and API calls run in node mode with identical-aggregation consensus.
+3. **Onchain truth** — one Multicall3 read returns the adapter's attestor, the latest attestation per agent and, per mandate,
+   `getMandate`, `getState`, the breaker `stateOf`, `currentDrawdownBps` and `equityOf`. CRE allows 15 chain reads per
+   execution and Monad's public RPC caps `eth_getLogs` at 100 blocks, so the whole run fits in 1 header + ≤12 log
+   chunks + 1 multicall (+1 write).
+4. **External context** — the MON/USD mark from CoinGecko (median consensus) and a structured risk note from Claude
+   (`claude-opus-5`, JSON-schema output, consensus by field: median `riskScore`, identical `level`/`flags`). The LLM is
+   advisory: without a key, or if the nodes disagree, the attestation proceeds without it and the evidence says so.
+5. **Score** — `scoring.ts` is pure and unit-tested: 100 minus 15 per trip (max 45), 10 while frozen, up to 20 for drawdown
+   relative to the mandate's own limit, 5 above 90% cap utilisation, 5 for an early revoke, 10/5 for a high/medium LLM
+   level. `realisedPnlBps` is mark-to-peak equity from the breaker.
+6. **Evidence** — `evidenceHash = keccak256(abi.encode(Evidence))` over every input that moved the score (window, blocks,
+   mandate hashes, execution and trip tx hashes, counts, spend, PnL, drawdown, utilisation, mark price, LLM score/level,
+   sources). The full evidence JSON is logged; `bun run verify-evidence '<json>'` recomputes the hash and finds the
+   matching attestation onchain.
+7. **Write** — `runtime.report(abi.encode(agentId, Attestation))` → `evmClient.writeReport` → KeystoneForwarder →
+   `CREAttestationReceiver.onReport` → `adapter.attest` → mirrored into the ERC-8004 registry as `giveFeedback`.
+
+### The receiver
+
+`contracts/src/cre/CREAttestationReceiver.sol` implements Chainlink's `IReceiver` (+ ERC-165). It accepts reports only
+from allow-listed forwarders (the Monad testnet KeystoneForwarder and the MockKeystoneForwarder used by
+`cre workflow simulate --broadcast`), optionally pins the workflow owner, name (`sha256(name)` hex prefix as `bytes10`,
+the same encoding as Chainlink's `ReceiverTemplate`) and id, and discards stale windows per agent. Deployed on Monad testnet
+at `0x0c89d72a5ABf96556EEB14c31d87D55c7ECCC573`; `adapter.setAttestor(receiver)` tx
+`0x7d3a366c11e20a2a06f475bad11899864effc4f9bf8a4f234fa86969128039dd`.
+
+### Run it
+
+```bash
+cd cre && bun install
+cp .env.example .env            # CRE_ETH_PRIVATE_KEY (funded), optional LLM_API_KEY_VALUE (Anthropic)
+bun test && bun run typecheck   # scoring + evidence unit tests
+bun run simulate                # dry run: reads Monad, builds the report, no transaction
+bun run simulate:broadcast      # writes through the MockKeystoneForwarder; requires `cre login`
+```
+
+`cre/simulation.log` and `cre/simulation-broadcast.log` are committed runs. The broadcast run wrote attestation #1 for
+agent `1869` (score 60: one breaker trip, drawdown at the limit, early revoke) in tx
+`0x6e1c564d808369ba339d31f95606cace3396b0625c3cbd1917fa9d7fb8b1a35b`; `bun run scripts/verify-evidence.ts
+simulation-broadcast.log` recomputes its evidence hash from the log and finds that attestation onchain. The report gas
+limit is 600k: the receiver path (forwarder → receiver → adapter → ERC-8004 mirror) measures ~420k, and a forwarder
+transaction can succeed while the receiver call inside it runs out of gas, so the workflow also checks the reply's
+`receiverContractExecutionStatus`. Monad testnet is declared as an
+`experimental-chains` entry in `project.yaml` (selector `2183018362218727504`) because it is not in the CLI's built-in
+chain list yet; deploying to a DON uses the `production-settings` target and the production forwarder.
+
+### Trust boundary
+
+- Only the receiver can attest; only allow-listed forwarders can call the receiver; only DON-signed reports pass the
+  forwarder. Revoking the mock forwarder (`setForwarder(mock, false)`) closes the simulation path for production.
+- `expectedAuthor` / `expectedWorkflowName` pin the receiver to one workflow owner once the workflow is deployed (the
+  simulator reports placeholder owner `0xaaaa…` and id `0x1111…`, so leave them unset for simulation).
+- Stale or replayed windows revert (`StaleReport`); the adapter still enforces score ≤ 100 and `windowEnd > windowStart`.
 
 ## Mera PRF
 

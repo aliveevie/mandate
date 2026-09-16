@@ -15,6 +15,22 @@ library Addresses {
     address internal constant ERC8004_IDENTITY_MAINNET = 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432;
     address internal constant ERC8004_REPUTATION_MAINNET = 0x8004BAa17C55a88189AE136b182e5fdA19dE9b63;
 
+    // Chainlink CRE (Keystone) forwarders on Monad testnet. The production forwarder is what deployed workflows
+    // report through; the mock forwarder is what `cre workflow simulate --broadcast` reports through.
+    // Source: docs.chain.link/cre (supported networks) — verified 2026-09-16.
+    address internal constant CRE_FORWARDER_MONAD_TESTNET = 0xF8344CFd5c43616a4366C34E3EEE75af79a74482;
+    address internal constant CRE_MOCK_FORWARDER_MONAD_TESTNET = 0xB9F79d863261869B234c481D1f9A7af84AeAd192;
+
+    function creForwarder(uint256 chainId) internal pure returns (address) {
+        if (chainId == MONAD_TESTNET) return CRE_FORWARDER_MONAD_TESTNET;
+        return address(0);
+    }
+
+    function creMockForwarder(uint256 chainId) internal pure returns (address) {
+        if (chainId == MONAD_TESTNET) return CRE_MOCK_FORWARDER_MONAD_TESTNET;
+        return address(0);
+    }
+
     function erc8004Identity(uint256 chainId) internal pure returns (address) {
         if (chainId == MONAD_TESTNET) return ERC8004_IDENTITY_TESTNET;
         if (chainId == MONAD_MAINNET) return ERC8004_IDENTITY_MAINNET;
