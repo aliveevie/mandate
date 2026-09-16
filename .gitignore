@@ -45,6 +45,12 @@ apps/server/dist/
 .envio/
 generated/
 cre/.cre/
+cre/node_modules/
+cre/**/tmp.js
+cre/**/tmp.wasm
+cre/**/.cre_build_tmp.js
+!cre/simulation.log
+!cre/simulation-broadcast.log
 *.log
 
 # --- os / ide ---

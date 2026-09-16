@@ -13,7 +13,8 @@ See `MANDATE_PROTOCOL_BUILD_SPEC.md` for the build plan.
 | Indexer (`indexer/`) | Envio HyperIndex, verified locally against testnet; deploy on Envio Cloud |
 | Docs (`docs/`) | mkdocs-material site, builds with `--strict`; published by the Pages workflow |
 | Reference app (`apps/`) | Vite UI + Express server, Dockerised; `docker build . && docker run -p 8787:8787 -e DEMO_AGENT_DEPLOYER_KEY=… mandate-reference` |
-| Bounty PRs | Next phases |
+| Chainlink CRE (`cre/`) | `mandate-reputation-attestor` workflow is the only reputation writer; receiver live on Monad testnet, simulation logs committed (`cre/simulation*.log`) |
+| Bounty PRs | Privy ✔ · Chainlink CRE ✔ · Mera PRF next |
 
 **Private execution mode:** the testnet `PrivateSubmitter` is deployed in **BTX mode**, which routes mandated calls through Monad's encrypted mempool so strategy and policy are not observable before inclusion. The same contract ships a commit-reveal mode behind the same `IPrivateSubmit` interface; redeploying with `SUBMITTER_MODE=1` switches to it. BTX is the production target.
 
