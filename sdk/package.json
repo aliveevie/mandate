@@ -18,6 +18,11 @@
       "types": "./dist/privy.d.ts",
       "import": "./dist/privy.js",
       "require": "./dist/privy.cjs"
+    },
+    "./prf": {
+      "types": "./dist/prf.d.ts",
+      "import": "./dist/prf.js",
+      "require": "./dist/prf.cjs"
     }
   },
   "files": [
@@ -70,5 +75,8 @@
     "@privy-io/node": {
       "optional": true
     }
+  },
+  "dependencies": {
+    "@category-labs/mera": "0.2.0"
   }
 }

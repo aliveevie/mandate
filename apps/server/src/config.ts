@@ -18,12 +18,14 @@ export const config = {
     /** Demo tokens minted to every new principal account. */
     mintAmount: 1000n * 10n ** 18n,
     /** MON sent to each provisioned agent key for gas. Monad testnet gas is ~200 gwei, so one execute is ~0.03 MON. */
-    agentGas: 300_000_000_000_000_000n, // 0.3 MON
+    // Gas given to a freshly provisioned agent key. Public demo default 0.3 MON; DEMO_AGENT_GAS_MON overrides locally.
+    agentGas: BigInt(Math.round(Number(env("DEMO_AGENT_GAS_MON", "0.3")) * 1e6)) * 10n ** 12n,
     /** Refuel the agent from its funder when its balance drops under this. */
     agentGasMin: 100_000_000_000_000_000n, // 0.1 MON
     agentGasTopUp: 200_000_000_000_000_000n, // 0.2 MON
     /** Below this the relayer refuses to pay for new work and the UI asks users to connect a wallet. */
-    relayerMin: 600_000_000_000_000_000n, // 0.6 MON
+    // Relay floor. Public demo default 0.6 MON; local runs may lower it with RELAYER_MIN_MON (e.g. 0.05).
+    relayerMin: BigInt(Math.round(Number(env("RELAYER_MIN_MON", "0.6")) * 1e6)) * 10n ** 12n,
   },
 };
 

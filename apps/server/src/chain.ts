@@ -84,6 +84,20 @@ export async function registerAgentIdentity(agentURI: string): Promise<{ agentId
   return { agentId: transfer.args.tokenId, tx: hash };
 }
 
+/** Hand an ERC-8004 identity the relayer registered to its real owner (an ERC-721 transfer). */
+export async function transferAgentIdentity(agentId: bigint, to: Address): Promise<Hex> {
+  const identity = mandateAddresses.erc8004Identity;
+  if (!identity) throw new Error("No ERC-8004 identity registry configured for this chain");
+  const hash = await deployerWallet.writeContract({
+    address: identity,
+    abi: parseAbi(["function safeTransferFrom(address from, address to, uint256 tokenId)"]),
+    functionName: "safeTransferFrom",
+    args: [deployer.address, to, agentId],
+  });
+  await wait(hash);
+  return hash;
+}
+
 export async function identityOwnerOf(agentId: bigint): Promise<Address | undefined> {
   const identity = mandateAddresses.erc8004Identity;
   if (!identity) return undefined;

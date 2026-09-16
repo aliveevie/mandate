@@ -51,4 +51,7 @@ export {
   PasskeyAccountBytecode,
 } from "./abi/generated.js";
 
+export { PRF_NAMESPACE, parsePolicyVault, policyHashOf, policyVaultCanonical, POLICY_VAULT_VERSION } from "./prf-vault.js";
+export type { PolicyVault } from "./prf-vault.js";
+
 export type * from "./types.js";
