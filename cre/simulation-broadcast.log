@@ -1,0 +1,38 @@
+# cre workflow simulate --broadcast — CRE CLI v1.0.9 (its broadcast mode crashes on filterLogs, so the fresh-log tail scan is disabled: tailBlocks=0) — 2026-09-16T12:36:29Z
+Added experimental chain (chain-selector: 2183018362218727504)
+Workflow compiled
+2026-09-16T13:36:42Z [SIMULATION] Simulator Initialized
+
+2026-09-16T13:36:42Z [SIMULATION] Running trigger trigger=cron-trigger@1.0.0
+2026-09-16T13:36:43Z [USER LOG] window 1789475803-1789562203 head block 63030839 on monad-testnet chainId=10143
+2026-09-16T13:36:43Z [USER LOG] multicall: 17 reads in one chain call
+2026-09-16T13:36:43Z [USER LOG] adapter.attestor=0x0c89d72a5abf96556eeb14c31d87d55c7eccc573 receiver=0x0c89d72a5abf96556eeb14c31d87d55c7eccc573 ok=true
+2026-09-16T13:36:45Z [USER LOG] LLM_API_KEY secret not available: attesting without the risk note
+2026-09-16T13:36:45Z [USER LOG] agent 1869: score=60 penalties={"trips":15,"frozen":0,"drawdown":20,"utilisation":0,"revoked":5,"llm":0} executed=8 trips=1 pnlBps=-1860 mandates=1
+2026-09-16T13:36:45Z [USER LOG] EVIDENCE 1869 1/2 {"schema":"0xca679f65cf918bd56d017c484868adb95410486c71f36ba469b4f5679e3d7886","chainId":"10143","agentId":"1869","windowStart":"1789475803","windowEnd":"1789562203","fromBlock":"63030839","toBlock":"63030839","mandateHashes":["0xb023465e209f578b382df2fecaffce5815acd5b8ce9743cda3a47deae8cc2140"],"executionTxHashes":["0x11ec366f4e1eeb99f02680bdc0c74f3277ee5e1a2c6184d61027b9e95e02fb42","0x1e46d9ea96f3a5ace08db13d98c57b010f57d338dbbbe732343f6d51f6fa3146","0x47e071917f7e8630d57d3ac09332f71439db786aec3a4bb7b78dcb819ff72c64","0x7e102130851952e93cba8a9d76c9b429cb6029cdd37ce6a65593b156c99ce676","0x84b9d83de1e3c47b6c0e6b0cdaa7d6c07988f52d7e7c6d26f645077a510a0c0a","0xa29aebdafd64eff28ca57e7f48a5f6711d
+2026-09-16T13:36:45Z [USER LOG] EVIDENCE 1869 2/2 75f4fd629fc8d0a3d6f747a9399ff5","0xd19f4e827991eda117dcfd5404094f9aa1adf7e264754cc8650c0129b900df93","0xebef061b9ba9269226bbeb19b45c0efb127761d09fdb7ac14e02e6c2d816a4c1"],"tripTxHashes":[],"executedCount":8,"tripCount":1,"spentInWindow":"186000000000000000000","realisedPnlBps":"-1860","worstDrawdownBps":"1860","utilisationBps":"6200","complianceScore":60,"markPriceUsdE6":"22192","llmRiskScore":255,"llmLevel":"","sources":["breaker-state","coingecko","mandate-api","monad-rpc"]}
+2026-09-16T13:36:45Z [USER LOG] EVIDENCE_HASH 1869 0x0e3483abd78516978c1ff2b0e1d3456f0e33992395c226516a94458e6a67b7af
+2026-09-16T13:36:47Z [USER LOG] agent 1869: attestation written tx=0x6e1c564d808369ba339d31f95606cace3396b0625c3cbd1917fa9d7fb8b1a35b
+
+Workflow Simulation Result:
+ {
+  "attested": [
+    "1869: score 60 evidence 0x0e3483abd78516978c1ff2b0e1d3456f0e33992395c226516a94458e6a67b7af tx 0x6e1c564d808369ba339d31f95606cace3396b0625c3cbd1917fa9d7fb8b1a35b"
+  ],
+  "chain": "monad-testnet",
+  "headBlock": "63030839",
+  "llm": "unavailable",
+  "markPriceUsd": "0.022192",
+  "receiverIsAttestor": "true",
+  "skipped": [
+    "1831: idle in window",
+    "1868: idle in window",
+    "1870: idle in window"
+  ],
+  "window": "1789475803-1789562203"
+}
+
+2026-09-16T13:36:47Z [SIMULATION] Execution finished signal received
+2026-09-16T13:36:47Z [SIMULATION] Skipping WorkflowEngineV2
+
+

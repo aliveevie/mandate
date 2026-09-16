@@ -1,0 +1,49 @@
+# cre workflow simulate — CRE CLI v1.34.0, no broadcast (report built and simulated, nothing sent) — 2026-09-16T12:34:52Z
+Initializing...
+Loading settings...
+Checking RPC connectivity...
+Compiling workflow...
+✓ Workflow compiled
+✓ Simulation limits enabled
+  HTTP: req=120kb resp=250kb timeout=10s | ConfHTTP: req=125kb resp=500kb timeout=1m30s | Consensus obs=25kb | ChainWrite evm_report=50kb evm_gas=10000000 solana_report=265b solana_cu=300000 | WASM binary=100mb compressed=20mb
+  Binary hash: 1402bd2c85ab36cacff823d3d93a3dfebbe681e4a19fd62a6f128aeac5d1451b
+  Config hash: 9b3f3bcaffe0e391875b3dcbeaec6e354662a6b5476e3c10beaaefdc85c5b8cb
+2026-09-16T13:35:05Z [SIMULATION] Simulator Initialized
+
+2026-09-16T13:35:05Z [SIMULATION] Running trigger trigger=cron-trigger@1.0.0
+2026-09-16T13:35:05Z [USER LOG] window 1789475705-1789562105 head block 63030517 on monad-testnet chainId=10143
+2026-09-16T13:35:11Z [USER LOG] tail scan blocks 63029317-63030517: 13 log queries, 0 Mandate event(s)
+2026-09-16T13:35:12Z [USER LOG] multicall: 17 reads in one chain call
+2026-09-16T13:35:12Z [USER LOG] adapter.attestor=0x0c89d72a5abf96556eeb14c31d87d55c7eccc573 receiver=0x0c89d72a5abf96556eeb14c31d87d55c7eccc573 ok=true
+2026-09-16T13:35:12Z [USER LOG] agent 1869: score=60 penalties={"trips":15,"frozen":0,"drawdown":20,"utilisation":0,"revoked":5,"llm":0} executed=8 trips=1 pnlBps=-1860 mandates=1
+2026-09-16T13:35:12Z [USER LOG] EVIDENCE 1869 1/2 {"schema":"0xca679f65cf918bd56d017c484868adb95410486c71f36ba469b4f5679e3d7886","chainId":"10143","agentId":"1869","windowStart":"1789475705","windowEnd":"1789562105","fromBlock":"63029317","toBlock":"63030517","mandateHashes":["0xb023465e209f578b382df2fecaffce5815acd5b8ce9743cda3a47deae8cc2140"],"executionTxHashes":["0x11ec366f4e1eeb99f02680bdc0c74f3277ee5e1a2c6184d61027b9e95e02fb42","0x1e46d9ea96f3a5ace08db13d98c57b010f57d338dbbbe732343f6d51f6fa3146","0x47e071917f7e8630d57d3ac09332f71439db786aec3a4bb7b78dcb819ff72c64","0x7e102130851952e93cba8a9d76c9b429cb6029cdd37ce6a65593b156c99ce676","0x84b9d83de1e3c47b6c0e6b0cdaa7d6c07988f52d7e7c6d26f645077a510a0c0a","0xa29aebdafd64eff28ca57e7f48a5f6711d
+2026-09-16T13:35:12Z [USER LOG] EVIDENCE 1869 2/2 75f4fd629fc8d0a3d6f747a9399ff5","0xd19f4e827991eda117dcfd5404094f9aa1adf7e264754cc8650c0129b900df93","0xebef061b9ba9269226bbeb19b45c0efb127761d09fdb7ac14e02e6c2d816a4c1"],"tripTxHashes":[],"executedCount":8,"tripCount":1,"spentInWindow":"186000000000000000000","realisedPnlBps":"-1860","worstDrawdownBps":"1860","utilisationBps":"6200","complianceScore":60,"markPriceUsdE6":"22077","llmRiskScore":255,"llmLevel":"","sources":["breaker-state","coingecko","mandate-api","monad-rpc"]}
+2026-09-16T13:35:12Z [USER LOG] EVIDENCE_HASH 1869 0x40e4d723ba500bdf9c35375a1a39de8bf9f82b555a7535317e2bc7a0e750d19b
+2026-09-16T13:35:13Z [USER LOG] agent 1869: attestation written tx=0x
+
+✓ Workflow Simulation Result:
+{
+  "attested": [
+    "1869: score 60 evidence 0x40e4d723ba500bdf9c35375a1a39de8bf9f82b555a7535317e2bc7a0e750d19b tx 0x"
+  ],
+  "chain": "monad-testnet",
+  "headBlock": "63030517",
+  "llm": "unavailable",
+  "markPriceUsd": "0.022077",
+  "receiverIsAttestor": "true",
+  "skipped": [
+    "1831: idle in window",
+    "1868: idle in window",
+    "1870: idle in window"
+  ],
+  "window": "1789475705-1789562105"
+}
+
+2026-09-16T13:35:13Z [SIMULATION] Execution finished signal received
+2026-09-16T13:35:13Z [SIMULATION] Skipping WorkflowEngineV2
+
+╭──────────────────────────────────────────────────────╮
+│ Simulation complete! Ready to deploy your workflow?  │
+│                                                      │
+│ Run cre account access to request deployment access. │
+╰──────────────────────────────────────────────────────╯
