@@ -1,0 +1,930 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A delegation and trust primitive for the agent economy on Monad.">
+      
+      
+      
+        <link rel="canonical" href="https://aliveevie.github.io/mandate/security/">
+      
+      
+        <link rel="prev" href="../indexer/">
+      
+      
+        <link rel="next" href="../integrations/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Security - Mandate</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#security" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Mandate" class="md-header__button md-logo" aria-label="Mandate" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Mandate
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Security
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/aliveevie/mandate" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    aliveevie/mandate
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Mandate" class="md-nav__button md-logo" aria-label="Mandate" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Mandate
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/aliveevie/mandate" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    aliveevie/mandate
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../indexer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Indexer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#threat-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threat model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-seven-properties-and-where-each-is-proven" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The seven properties, and where each is proven
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-decisions-that-matter-for-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design decisions that matter for security
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secret-handling-checklist-property-7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secret handling checklist (property 7)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#static-analysis-slither-triage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Static analysis: Slither triage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secret-scan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secret scan
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#threat-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threat model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-seven-properties-and-where-each-is-proven" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The seven properties, and where each is proven
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-decisions-that-matter-for-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design decisions that matter for security
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secret-handling-checklist-property-7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secret handling checklist (property 7)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#static-analysis-slither-triage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Static analysis: Slither triage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secret-scan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secret scan
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="security">Security<a class="headerlink" href="#security" title="Permanent link">&para;</a></h1>
+<h2 id="threat-model">Threat model<a class="headerlink" href="#threat-model" title="Permanent link">&para;</a></h2>
+<p>Mandate assumes the agent is untrusted. It may be buggy, compromised, or adversarial. The principal's passkey and the chain are the trust anchors. The attestor is a single accountable role whose output is verifiable from on-chain evidence.</p>
+<p><strong>In scope.</strong> An agent trying to spend more than allowed, call something it should not, keep acting after revocation, keep acting through a drawdown, replay a grant on another chain or registry, or write its own reputation.</p>
+<p><strong>Out of scope, deliberately.</strong> Losses inside a whitelisted call that stay within the caps and the breaker threshold: that is the risk the principal chose. A compromised passkey: the principal's device is the root of trust. A malicious venue draining approvals outside the executor: approvals are the principal's decision, and the breaker still records the drawdown. Liveness of the attestor: a stalled attestor means stale reputation, not stolen funds.</p>
+<p><strong>With Privy configured.</strong> The agent's key is a Privy server wallet: there is no private key on the server to steal, only an authorization key that can ask Privy to sign within policy. The wallet policy is a second, independent statement of the mandate evaluated before a signature exists, so a compromised agent process cannot produce a transaction outside the mandate at all. A user's delegated session signer is scoped by policy to EIP-712 for the Mandate registry and that user's own account; it cannot sign messages, transactions or other domains, and the user can revoke the delegation in Privy at any time. None of this weakens the chain-side guarantees below; it adds a layer in front of them.</p>
+<h2 id="the-seven-properties-and-where-each-is-proven">The seven properties, and where each is proven<a class="headerlink" href="#the-seven-properties-and-where-each-is-proven" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Property</th>
+<th>Proof</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>An agent can never spend more than <code>spendCap</code> lifetime or <code>perBlockCap</code> per block</td>
+<td>Invariants <code>invariant_lifetimeSpendWithinCap</code>, <code>invariant_perBlockSpendWithinCap</code>; unit tests on both caps. Spend is measured as real asset outflow and re-checked in <code>recordExecution</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>An agent can never call a non-whitelisted target or selector</td>
+<td>Invariant <code>invariant_onlyWhitelistedCalls</code>; unit tests for wrong target and wrong selector</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Revocation takes effect in the block it is mined</td>
+<td>Unit test: revoke via passkey, then execute and validate revert in the same block</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Breaker tripped means zero executions until re-armed</td>
+<td>Invariant <code>invariant_noExecutionWhileTripped</code>; unit test through trip, cooldown, hysteresis and re-arm</td>
+</tr>
+<tr>
+<td>5</td>
+<td>A mandate signature is bound to chain id and registry</td>
+<td>Unit tests: same signature rejected after <code>vm.chainId</code> change and on a second registry</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Only the attestor can write reputation</td>
+<td>Unit test: agent, principal and owner all rejected with <code>NotAttestor</code>; SDK test repeats it live</td>
+</tr>
+<tr>
+<td>7</td>
+<td>No secret ever appears in a contract, log, committed file or server DB</td>
+<td>Review checklist below</td>
+</tr>
+</tbody>
+</table>
+<p>Run them: <code>cd contracts &amp;&amp; forge test</code> (67 tests, invariants at 256 runs under the CI profile).</p>
+<h2 id="design-decisions-that-matter-for-security">Design decisions that matter for security<a class="headerlink" href="#design-decisions-that-matter-for-security" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Measured spend, not declared spend.</strong> The agent declares an upper bound; the executor measures the principal's balance before and after and reverts <code>SpendExceedsDeclared</code> if the real outflow is higher. Caps therefore bind actual value, not the agent's word.</li>
+<li><strong>Live drawdown check in <code>validate</code>.</strong> Even before a keeper persists a trip, a call is rejected if current drawdown already exceeds the threshold.</li>
+<li><strong>Hysteresis.</strong> The re-arm threshold is strictly below the trip threshold, so the breaker cannot oscillate.</li>
+<li><strong>Low-s only, user verification required.</strong> The account rejects malleable P256 signatures and assertions without the UV flag.</li>
+<li><strong>One-shot wiring.</strong> Registry and executor configuration can be set once and never changed. There is no upgrade path and no admin that can move funds.</li>
+<li><strong>No P256 math in the repository.</strong> Verification runs through the precompile via Solady's audited libraries.</li>
+</ul>
+<h2 id="secret-handling-checklist-property-7">Secret handling checklist (property 7)<a class="headerlink" href="#secret-handling-checklist-property-7" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Passkey private keys never leave the authenticator. The SDK stores only the credential id and public key.</li>
+<li>The software passkey used by tests and the quickstart is a WebCrypto key held in the caller's storage. It is documented as a hot key and is never written by the SDK to disk on its own.</li>
+<li><code>.env</code> files, Foundry keystores and broadcast caches are gitignored. <code>git ls-files</code> contains no env, keystore or broadcast file.</li>
+<li>Deploy scripts sign from a Foundry keystore, not from a private key in the environment.</li>
+<li>Contracts emit no secret material. Events carry hashes, addresses and amounts only.</li>
+</ul>
+<h2 id="static-analysis-slither-triage">Static analysis: Slither triage<a class="headerlink" href="#static-analysis-slither-triage" title="Permanent link">&para;</a></h2>
+<p>Slither 0.11 locally and the current release in CI over <code>contracts/src</code> (libraries, tests and scripts excluded): 25 distinct results, 0 exploitable. Every finding below is either the protocol working as designed or informational. CI runs Slither with these detectors excluded (<code>contracts/slither.config.json</code>) and fails on anything new at medium severity or above.</p>
+<table>
+<thead>
+<tr>
+<th>Detector</th>
+<th>Impact</th>
+<th>Where</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>arbitrary-send-eth</code></td>
+<td>High</td>
+<td><code>PasskeyAccount._call</code></td>
+<td><strong>Accepted, by design.</strong> <code>_call</code> is reachable only from <code>execute</code> (authorised by a fresh WebAuthn assertion over a nonce-bound digest) and <code>executeFromExecutor</code> (callable only by the immutable trusted executor, which has already passed <code>MandateRegistry.validate</code>). Sending value to an arbitrary target is the account's purpose.</td>
+</tr>
+<tr>
+<td><code>incorrect-equality</code></td>
+<td>Medium</td>
+<td><code>MandateRegistry.remainingBlockSpend</code> (<code>lastBlock == block.number</code>)</td>
+<td><strong>Accepted.</strong> The per-block cap is defined by block-number equality; any other block starts a fresh budget. This is the intended Monad-native semantics.</td>
+</tr>
+<tr>
+<td><code>incorrect-equality</code></td>
+<td>Medium</td>
+<td><code>RiskBreaker.checkpoint</code> (Cooldown re-arm)</td>
+<td><strong>Accepted.</strong> The flagged expression is <code>phase == Cooldown &amp;&amp; drawdown &lt;= threshold</code>, an enum equality guarding a <code>&lt;=</code> comparison.</td>
+</tr>
+<tr>
+<td><code>uninitialized-local</code></td>
+<td>Medium</td>
+<td><code>ERC8004ReputationAdapter.attest</code> (<code>mirrored</code>)</td>
+<td><strong>Accepted.</strong> Solidity zero-initialises locals; <code>mirrored</code> is <code>false</code> unless the try branch sets it, which is the intended semantics.</td>
+</tr>
+<tr>
+<td><code>missing-zero-check</code></td>
+<td>Low</td>
+<td>constructors of <code>PasskeyAccount</code>, <code>MandateExecutor</code>, <code>PrivateSubmitter</code>, <code>RiskBreaker</code>; <code>setSubmitter</code>; <code>setReputationRegistry</code></td>
+<td><strong>Accepted.</strong> Immutable wiring is set by <code>script/Deploy.s.sol</code> and proven by the end-to-end run; a zero address here is a deploy-time misconfiguration that fails loudly on first use, not an attack surface. <code>setReputationRegistry(0)</code> is intentionally allowed to disable mirroring.</td>
+</tr>
+<tr>
+<td><code>reentrancy-balance</code></td>
+<td>Medium</td>
+<td><code>MandateExecutor._callAndMeasure</code></td>
+<td><strong>Accepted, by design.</strong> The executor reads the principal's asset balance, performs the mandated call, and reads it again: that is how real outflow is measured against the declared bound. The function is behind <code>nonReentrant</code>, only the whitelisted target is called, and no protocol state is written between the two reads.</td>
+</tr>
+<tr>
+<td><code>unindexed-event-address</code></td>
+<td>Info</td>
+<td>admin events <code>AttestorSet</code>, <code>ReputationRegistrySet</code>, <code>SubmitterSet</code>, <code>Configured</code></td>
+<td><strong>Accepted.</strong> One-shot or owner-only configuration events; not queried by address.</td>
+</tr>
+<tr>
+<td><code>reentrancy-events</code></td>
+<td>Low</td>
+<td><code>MandateRegistry.grant</code>, <code>ERC8004ReputationAdapter.attest</code></td>
+<td><strong>Accepted.</strong> Events emitted after an external call to a trusted, immutable dependency (the breaker) or inside a try/catch to the ERC-8004 registry. No state is written after the call that a reentrant caller could exploit; <code>grant</code> mutates all state before calling the breaker.</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td>Low</td>
+<td>validity window checks</td>
+<td><strong>Accepted.</strong> Expiry is defined in seconds; validator timestamp drift is bounded and cannot extend a mandate past <code>validUntil</code> by more than that drift.</td>
+</tr>
+<tr>
+<td><code>assembly</code>, <code>low-level-calls</code></td>
+<td>Info</td>
+<td><code>PasskeyAccount._call</code></td>
+<td><strong>Accepted.</strong> Revert-bubbling of the target call so venue errors reach the agent verbatim.</td>
+</tr>
+<tr>
+<td><code>naming-convention</code></td>
+<td>Info</td>
+<td><code>DOMAIN_SEPARATOR</code></td>
+<td><strong>Accepted.</strong> EIP-712 convention.</td>
+</tr>
+<tr>
+<td><code>cyclomatic-complexity</code></td>
+<td>Info</td>
+<td><code>MandateRegistry.grant</code></td>
+<td><strong>Accepted.</strong> Input validation is deliberately exhaustive in one place.</td>
+</tr>
+</tbody>
+</table>
+<p>Reproduce: <code>pipx install slither-analyzer &amp;&amp; cd contracts &amp;&amp; slither .</code></p>
+<h2 id="secret-scan">Secret scan<a class="headerlink" href="#secret-scan" title="Permanent link">&para;</a></h2>
+<p><code>gitleaks git</code> over the full history reports no secrets. Three high-entropy hex values it flags (<code>.gitleaks.toml</code>) are the on-chain mandate, evidence and transaction hashes recorded in <code>contracts/deployments/monad-testnet.json</code> and the docs. Private keys are held only in Foundry keystores and untracked <code>.env</code> files; the deploy scripts sign from the keystore.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../indexer/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Indexer">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Indexer
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../integrations/" class="md-footer__link md-footer__link--next" aria-label="Next: Integrations">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Integrations
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "content.code.copy", "content.tabs.link", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
