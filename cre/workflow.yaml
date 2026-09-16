@@ -1,3 +1,0 @@
-# Chainlink CRE workflow: mandate-reputation-attestor. Wired in PR-3.
-name: mandate-reputation-attestor
-# Trigger: cron or MandateExecuted. Fetch Envio + venue APIs + LLM. Write adapter.attest.

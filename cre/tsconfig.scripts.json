@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": [
+      "bun"
+    ]
+  },
+  "include": [
+    "scripts/**/*",
+    "mandate-reputation-attestor/abi.ts",
+    "mandate-reputation-attestor/evidence.ts"
+  ]
+}
