@@ -6,7 +6,7 @@ import type { Account } from "viem";
 import { privy } from "./privy.js";
 import type { MandatePolicy } from "@ibxlab/mandate/privy";
 import { config } from "./config.js";
-import { deployer, deployerWallet, identityOwnerOf, publicClient, registerAgentIdentity, sdk, wait } from "./chain.js";
+import { deployer, deployerWallet, identityOwnerOf, publicClient, registerAgentIdentity, sdk, transferAgentIdentity, wait } from "./chain.js";
 
 const venueAbi = parseAbi(["function buy(address token, uint256 amount)", "function forbidden()"]);
 
@@ -39,6 +39,9 @@ export interface DemoAgent {
   running: boolean;
   mandateHash?: Hex;
   stopReason?: string;
+  /** Owner of the agent's ERC-8004 identity after a claim (a passkey-derived key via Mera PRF). */
+  identityOwner?: Address;
+  identityClaimTx?: Hex;
   feed: FeedItem[];
   /** Signs agent transactions: a local demo key, or a viem account backed by the Privy server wallet. */
   account: Account;
@@ -81,8 +84,28 @@ export function publicView(a: DemoAgent, mandateHash?: Hex) {
     running: a.running,
     mandateHash: a.mandateHash,
     stopReason: a.stopReason,
+    identityOwner: a.identityOwner,
+    identityClaimTx: a.identityClaimTx,
     feed: feed.slice(-50),
   };
+}
+
+/**
+ * Give the agent's ERC-8004 identity to `owner`: the principal's passkey-derived per-agent key (Mera PRF namespace
+ * `mandate:agent-id:<agentId>`). Only identities the relayer registered can be handed over; wallet-mode agents are
+ * already owned by the user's wallet.
+ */
+export async function claimAgentIdentity(a: DemoAgent, owner: Address) {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(owner)) throw new Error("owner must be an address");
+  const current = await identityOwnerOf(a.agentId);
+  if (!current) throw new Error("ERC-8004 identity not found");
+  if (current.toLowerCase() === owner.toLowerCase()) return { tx: a.identityClaimTx ?? null, owner: current, alreadyOwned: true };
+  if (current.toLowerCase() !== deployer.address.toLowerCase()) throw new Error(`ERC-8004 #${a.agentId} is owned by ${current}, not by the relayer`);
+  const tx = await transferAgentIdentity(a.agentId, owner);
+  a.identityOwner = owner;
+  a.identityClaimTx = tx;
+  push(a, { at: Date.now(), kind: "info", message: `ERC-8004 identity #${a.agentId} transferred to ${owner.slice(0, 8)}…, a key derived from the principal's passkey (Mera PRF)`, tx, mandateHash: a.mandateHash });
+  return { tx, owner, alreadyOwned: false };
 }
 
 /** Provision: fresh executing key, funded for gas, registered as an ERC-8004 identity. */
