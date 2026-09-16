@@ -15,6 +15,7 @@ const artifacts = {
   SignerAccount: "SignerAccount.sol/SignerAccount.json",
   PrivateSubmitter: "PrivateSubmitter.sol/PrivateSubmitter.json",
   ERC8004ReputationAdapter: "ERC8004ReputationAdapter.sol/ERC8004ReputationAdapter.json",
+  CREAttestationReceiver: "CREAttestationReceiver.sol/CREAttestationReceiver.json",
   ERC8004ReputationRegistry: "IERC8004.sol/IERC8004ReputationRegistry.json",
   ERC8004IdentityRegistry: "IERC8004.sol/IERC8004IdentityRegistry.json",
 };
