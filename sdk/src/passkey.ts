@@ -74,6 +74,8 @@ export class WebAuthnPasskey implements PasskeySigner {
         pubKeyCredParams: [{ alg: -7, type: "public-key" }],
         authenticatorSelection: { residentKey: "required", userVerification: "required" },
         attestation: "none",
+        // Ask for the PRF extension at creation so synced platform passkeys can evaluate PRF later (Mera PRF).
+        extensions: { prf: {} } as AuthenticationExtensionsClientInputs,
       },
     })) as PublicKeyCredential | null;
     if (!cred) throw new Error("Passkey creation was cancelled");

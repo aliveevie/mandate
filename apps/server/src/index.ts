@@ -2,10 +2,10 @@ import express, { type Request, type Response, type NextFunction } from "express
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Address, Hex } from "viem";
-import { MandateError, type SignedMandate } from "@ibxlab/mandate";
+import { MandateError, parsePolicyVault, policyHashOf, type SignedMandate } from "@ibxlab/mandate";
 import { config } from "./config.js";
 import { chain, deployAccount, deployer, explorerTx, mandateAddresses, publicClient, relayExecute, relayerBalance, sdk } from "./chain.js";
-import { activateAgent, agentForMandate, agentState, forceOutOfBounds, getAgent, listAgents, prepareAgent, provisionAgent, publicView, startAgent, stopAgent, sweepAll } from "./agents.js";
+import { activateAgent, agentForMandate, agentState, claimAgentIdentity, forceOutOfBounds, getAgent, listAgents, prepareAgent, provisionAgent, publicView, startAgent, stopAgent, sweepAll } from "./agents.js";
 import { fetchAttestations } from "./envio.js";
 import { privy, publicPrivyConfig, principalByAccount, principalByUser, rememberPrincipal } from "./privy.js";
 import { mirrorPolicy, probePolicy, revokePolicy } from "./agents.js";
@@ -160,6 +160,46 @@ app.post(
     json(res, publicView(a));
   }),
 );
+
+// Mera PRF: the principal's passkey-derived per-agent key takes ownership of the agent's ERC-8004 identity.
+app.post(
+  "/api/agents/:id/claim",
+  wrap(async (req, res) => {
+    const a = getAgent(req.params.id);
+    if (!a) return json(res, { error: "unknown agent" }, 404);
+    const { owner } = req.body as { owner?: Address };
+    if (!owner) return json(res, { error: "owner required" }, 400);
+    json(res, { ...(await claimAgentIdentity(a, owner)), agent: publicView(a) });
+  }),
+);
+
+// ------------------------------------------------------------------ policy blob store (dumb: ciphertext in, ciphertext out)
+// The mandate's onchain policyHash commits to the vault; the server can neither read nor alter it. Any blob store works.
+const blobs = new Map<string, { vault: ReturnType<typeof parsePolicyVault>; at: number }>();
+const BLOB_LIMIT = 2_000;
+
+app.put(
+  "/api/blobs/:hash",
+  wrap(async (req, res) => {
+    const hash = req.params.hash.toLowerCase();
+    let vault: ReturnType<typeof parsePolicyVault>;
+    try {
+      vault = parsePolicyVault(req.body);
+    } catch (e) {
+      return json(res, { error: "InvalidVault", message: (e as Error).message }, 400);
+    }
+    if (policyHashOf(vault) !== hash) return json(res, { error: "HashMismatch", message: "policyHash does not match the vault's canonical encoding" }, 400);
+    if (!blobs.has(hash) && blobs.size >= BLOB_LIMIT) blobs.delete(blobs.keys().next().value as string);
+    blobs.set(hash, { vault, at: Date.now() });
+    json(res, { policyHash: hash, stored: true }, 201);
+  }),
+);
+
+app.get("/api/blobs/:hash", (req, res) => {
+  const b = blobs.get(req.params.hash.toLowerCase());
+  if (!b) return json(res, { error: "NotFound", message: "No policy vault stored for that policyHash" }, 404);
+  json(res, b.vault);
+});
 
 app.post("/api/agents/:id/stop", (req, res) => {
   const a = getAgent(req.params.id);
