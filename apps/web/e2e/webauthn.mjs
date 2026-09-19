@@ -60,28 +60,29 @@ const mandateHash = (await body()).match(/0x[0-9a-f]{64}/)[0];
 const policyHash = (await body()).match(/policyHash\s*(0x[0-9a-f]{64})/)?.[1];
 lap(`mandate granted ${mandateHash.slice(0, 12)} (EIP-712 digest signed via WebAuthn) with policyHash ${policyHash?.slice(0, 12)} (PRF ceremony #2)`);
 await shot("grant");
-// 2c. Cross-device: wipe every byte of local state, reload with only the mandate hash, re-derive everything from the passkey
-await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
-await page.goto(`${URL}/?verify=${mandateHash}`);
-await page.waitForSelector("text=fresh device: no local state");
-await page.click("text=Re-derive with passkey");
-await waitText(/Cross-device check passed/, 120_000);
-const xdText = await body();
-// innerText applies the label's text-transform (uppercase), so match case-insensitively
-const xdDerived = xdText.match(/identity \(derived now\)\s*(0x[0-9a-fA-F]{8}…[0-9a-fA-F]{8})/i)?.[1];
-const xdPolicy = xdText.match(/"strategy": "([^"]+)"/)?.[1];
-if (xdDerived !== derivedOwner) throw new Error(`cross-device identity mismatch: ${xdDerived} vs ${derivedOwner}`);
-lap(`cross-device check passed: policy decrypted ("${xdPolicy}"), identity ${xdDerived} re-derived and equals the onchain ERC-8004 owner (PRF ceremonies #3, #4; no local state)`);
-await shot("cross-device");
+// 2c. Cross-device: wipe every byte of local state, reload with only the mandate hash, re-derive everything from the passkey.
+//     Wiping also forgets the session, so in the full flow this runs last; with E2E_PRF_ONLY it runs now.
+const crossDevice = async () => {
+  await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+  await page.goto(`${URL}/?verify=${mandateHash}`);
+  await page.waitForSelector("text=fresh device: no local state");
+  await page.click("text=Re-derive with passkey");
+  await waitText(/Cross-device check passed/, 120_000);
+  const xdText = await body();
+  // innerText applies the label's text-transform (uppercase), so match case-insensitively
+  const xdDerived = xdText.match(/identity \(derived now\)\s*(0x[0-9a-fA-F]{8}…[0-9a-fA-F]{8})/i)?.[1];
+  const xdPolicy = xdText.match(/"strategy": "([^"]+)"/)?.[1];
+  if (xdDerived !== derivedOwner) throw new Error(`cross-device identity mismatch: ${xdDerived} vs ${derivedOwner}`);
+  lap(`cross-device check passed: policy decrypted ("${xdPolicy}"), identity ${xdDerived} re-derived and equals the onchain ERC-8004 owner (PRF ceremonies #3, #4; no local state)`);
+  await shot("cross-device");
+};
 if (process.env.E2E_PRF_ONLY) {
   // Mera PRF proof only (cheap on testnet gas): stop before the agent trades.
+  await crossDevice();
   await browser.close();
   console.log("BROWSER WEBAUTHN + MERA PRF FLOW OK", JSON.stringify({ address, agentId, mandateHash, policyHash, derivedOwner }));
   process.exit(0);
 }
-// back to the normal flow: restore the passkey principal (the app only forgot local state, the passkey still exists)
-await page.goto(URL);
-await page.waitForSelector("text=Create passkey & account");
 // 3. Agent
 await page.click("text=Run the agent");
 await page.getByRole("button", { name: "Run", exact: true }).click();
@@ -109,5 +110,7 @@ await page.click("text=demo agent #1831");
 await waitText(/mirrored to ERC-8004/, 60_000);
 lap("reputation: agent #1831 mirrored to ERC-8004");
 await shot("reputation");
+// 5. Mera PRF cross-device check, last: it wipes local state
+await crossDevice();
 await browser.close();
-console.log("BROWSER WEBAUTHN FLOW OK", JSON.stringify({ address, agentId, mandateHash }));
+console.log("BROWSER WEBAUTHN FLOW OK", JSON.stringify({ address, agentId, mandateHash, policyHash, derivedOwner }));

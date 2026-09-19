@@ -68,3 +68,6 @@ apps/web/e2e/*.png
 # committed CRE simulation runs (override the *.log rule above)
 !cre/simulation.log
 !cre/simulation-broadcast.log
+
+# local run logs (never committed)
+.logs/
