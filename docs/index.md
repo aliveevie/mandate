@@ -32,6 +32,7 @@ themselves; [Integrate in 15 minutes](integrate.md) shows each path in code.
 ## Where things are
 
 - **Monad testnet deployment** and every transaction hash: [Contracts](contracts.md)
+- **Install**: `pnpm add @ibxlab/mandate viem` ([npm](https://www.npmjs.com/package/@ibxlab/mandate))
 - **Ten-minute quickstart** against testnet: [Quickstart](quickstart.md); every call, typed: [SDK reference](sdk-reference.md)
 - **How mandates, the breaker and reputation fit together**: [Concepts](concepts.md)
 - **Threat model and the seven tested properties**: [Security](security.md)
