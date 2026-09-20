@@ -33,28 +33,29 @@ export function createAgentModule(deps: AgentModuleDeps) {
       let cached: Promise<Mandate> | undefined;
       const mandate = () => (cached ??= deps.mandates.get(opts.mandateHash));
 
+      /** Throws the typed MandateError the chain would revert with, without sending anything. */
+      const validate = async (p: ExecuteParams): Promise<void> => {
+        const m = await mandate();
+        if (m.agentKey.toLowerCase() !== wallet.account.address.toLowerCase()) {
+          throw new MandateError("NotAgentKey", [wallet.account.address, m.agentKey]);
+        }
+        const selector = p.data.length >= 10 ? slice(p.data, 0, 4) : "0x00000000";
+        await deps.mandates.validate(opts.mandateHash, p.target, selector, p.amount);
+      };
+
       return {
         hash: opts.mandateHash,
         address: wallet.account.address,
         mandate,
         state: (): Promise<MandateState> => deps.mandates.state(opts.mandateHash),
-
-        /** Throws the typed MandateError the chain would revert with, without sending anything. */
-        async validate(p: ExecuteParams): Promise<void> {
-          const m = await mandate();
-          if (m.agentKey.toLowerCase() !== wallet.account.address.toLowerCase()) {
-            throw new MandateError("NotAgentKey", [wallet.account.address, m.agentKey]);
-          }
-          const selector = p.data.length >= 10 ? slice(p.data, 0, 4) : "0x00000000";
-          await deps.mandates.validate(opts.mandateHash, p.target, selector, p.amount);
-        },
+        validate,
 
         /**
          * Execute within the mandate. Order: typed pre-check (registry.validate) -> full simulation
          * (catches venue reverts and breaker trips) -> send -> wait. Protocol reverts surface as MandateError.
          */
         async execute(p: ExecuteParams): Promise<TxResult> {
-          await this.validate(p);
+          await validate(p);
           return rethrowTyped(async () => {
             const { request } = await deps.publicClient.simulateContract({
               address: deps.addresses.executor,

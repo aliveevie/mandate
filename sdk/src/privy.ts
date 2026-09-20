@@ -232,7 +232,7 @@ export async function createPrivyIntegration(cfg: PrivyIntegrationConfig): Promi
     return created.id as string;
   };
 
-  return {
+  const integration: PrivyIntegration = {
     client,
     keyQuorumId: cfg.keyQuorumId,
     agents: {
@@ -310,8 +310,9 @@ export async function createPrivyIntegration(cfg: PrivyIntegrationConfig): Promi
         return (res as { signature: Hex }).signature;
       },
       principal({ walletId, owner, account }) {
-        return new SignerPrincipalImpl(account, owner, (td) => this.signTypedData({ walletId, typedData: td }));
+        return new SignerPrincipalImpl(account, owner, (td) => integration.sessions.signTypedData({ walletId, typedData: td }));
       },
     },
   };
+  return integration;
 }

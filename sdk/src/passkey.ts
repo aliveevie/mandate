@@ -291,7 +291,7 @@ export function createPasskeyModule(deps: PasskeyModuleDeps) {
     return receipt.contractAddress;
   }
 
-  return {
+  const passkeyApi = {
     /**
      * Create only the key (no transaction). Use when a relayer deploys the account: send `publicKey`
      * to your server, then `attach(key, address)` and `save(principal)`.
@@ -323,7 +323,7 @@ export function createPasskeyModule(deps: PasskeyModuleDeps) {
       if (!raw) return null;
       const stored = JSON.parse(raw) as StoredPrincipal;
       if (stored.kind === "signer") return null; // needs its external signer; the app re-attaches it
-      return this.fromJSON(stored);
+      return passkeyApi.fromJSON(stored);
     },
 
     /** Rehydrate a principal from its serialised form. */
@@ -373,6 +373,7 @@ export function createPasskeyModule(deps: PasskeyModuleDeps) {
       await storage.remove(opts.storageKey ?? STORAGE_KEY);
     },
   };
+  return passkeyApi;
 }
 
 export type PasskeyModule = ReturnType<typeof createPasskeyModule>;

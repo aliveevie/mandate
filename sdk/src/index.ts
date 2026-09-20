@@ -46,6 +46,7 @@ export {
   SignerAccountBytecode,
   PrivateSubmitterAbi,
   ERC8004ReputationAdapterAbi,
+  CREAttestationReceiverAbi,
   ERC8004ReputationRegistryAbi,
   ERC8004IdentityRegistryAbi,
   PasskeyAccountBytecode,
