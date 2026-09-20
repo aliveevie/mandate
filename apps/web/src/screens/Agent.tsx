@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Ban, Bot, Fingerprint, Play, Square, Zap, CheckCircle2, XCircle, Info, PauseCircle, Landmark, ShieldOff, LockKeyhole } from "lucide-react";
 import type { Session } from "../App";
+import { ensureSession } from "../lib/session";
 import { friendlyError, type FriendlyError } from "../lib/errors";
 import { api, type AgentState, type AgentView } from "../lib/api";
 import { fmtTokens, getClient } from "../lib/client";
@@ -32,14 +33,15 @@ export default function AgentScreen({ s }: { s: Session }) {
   const run = async () => {
     if (!s.agent || !s.mandateHash) return;
     setErr(null);
-    try { const a = await api<AgentView>(`/api/agents/${s.agent.id}/run`, { json: { mandateHash: s.mandateHash } }); if (a.id !== s.agent.id) s.setAgent(a); await load(); }
+    try { if (s.principal) await ensureSession(s.principal, s.cfg.chainId); const a = await api<AgentView>(`/api/agents/${s.agent.id}/run`, { json: { mandateHash: s.mandateHash } }); if (a.id !== s.agent.id) s.setAgent(a); await load(); }
     catch (e) { setErr(friendlyError(e)); }
   };
-  const stop = async () => { if (!s.agent) return; await api(`/api/agents/${s.agent.id}/stop`, { json: {} }); await load(); };
+  const stop = async () => { if (!s.agent) return; if (s.principal) await ensureSession(s.principal, s.cfg.chainId); await api(`/api/agents/${s.agent.id}/stop`, { json: {} }); await load(); };
   const force = async () => {
     if (!s.agent || !s.mandateHash) return;
     setBusy("force"); setForced(null);
     try {
+      if (s.principal) await ensureSession(s.principal, s.cfg.chainId);
       const r = await api<{ blocked: boolean; error?: { name: string; message: string } }>(`/api/agents/${s.agent.id}/force-out-of-bounds`, { json: { mandateHash: s.mandateHash } });
       if (r.blocked && r.error) { setForced(r.error); toast.push({ kind: "info", title: `Blocked before sending: ${r.error.name}`, detail: r.error.message }); }
       await load();
@@ -49,6 +51,7 @@ export default function AgentScreen({ s }: { s: Session }) {
     if (!s.agent || !s.mandateHash) return;
     setBusy("probe"); setProbe(null);
     try {
+      if (s.principal) await ensureSession(s.principal, s.cfg.chainId);
       const r = await api<{ blocked: boolean; reason?: string; hash?: string }>(`/api/agents/${s.agent.id}/policy-probe`, { json: { mandateHash: s.mandateHash } });
       setProbe(r);
       toast.push({ kind: r.blocked ? "info" : "error", title: r.blocked ? "Privy refused to sign outside the policy" : "Privy signed it: no policy attached", detail: r.reason?.slice(0, 160) });

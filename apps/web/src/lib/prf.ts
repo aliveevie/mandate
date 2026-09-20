@@ -64,7 +64,12 @@ export async function crossDeviceCheck(cfg: PublicConfig, pc: PublicClient, mand
     policyError = "This mandate was granted without an encrypted policy (policyHash is zero).";
   } else {
     try {
-      const vault = await api<PolicyVault>(`/api/blobs/${policyHash}`);
+      // The blob store is the primary copy; a local copy written at grant time is the fallback.
+      const vault = await api<PolicyVault>(`/api/blobs/${policyHash}`).catch((e) => {
+        const local = localStorage.getItem(`mandate.vault.${policyHash}`);
+        if (!local) throw e;
+        return JSON.parse(local) as PolicyVault;
+      });
       const out = await decryptPolicy<AgentPolicy>({ rpId: rpId(), vault, credentialId });
       policy = out.policy;
       credId = out.credentialId;
