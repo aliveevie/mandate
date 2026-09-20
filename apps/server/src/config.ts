@@ -12,6 +12,8 @@ export const config = {
   deployerKey: env("DEMO_AGENT_DEPLOYER_KEY") as Hex | undefined,
   envioUrl: env("ENVIO_GRAPHQL_URL"),
   publicDir: env("PUBLIC_DIR", "./public")!,
+  /** Where encrypted policy vaults persist (JSON). Empty string = memory only. */
+  blobStorePath: env("BLOB_STORE_PATH", "./data/policy-vaults.json") || null,
   demo: {
     asset: (env("DEMO_ASSET") ?? testnetDemo.asset) as Address,
     venue: (env("DEMO_VENUE") ?? testnetDemo.venue) as Address,

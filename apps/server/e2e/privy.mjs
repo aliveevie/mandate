@@ -8,13 +8,14 @@
  *   API=http://localhost:8787 node e2e/privy.mjs
  */
 import { createMandateClient, PasskeyAccountAbi } from "@ibxlab/mandate";
-import { createPublicClient, http, encodeFunctionData, parseAbi } from "viem";
+import { createPublicClient, http, encodeFunctionData, parseAbi, encodeAbiParameters, keccak256 } from "viem";
 import { monadTestnet } from "viem/chains";
 
 const API = process.env.API ?? "http://localhost:8787";
 const j = (v) => JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x));
+let SESSION = null;
 async function api(p, body) {
-  const r = await fetch(API + p, { method: body ? "POST" : "GET", headers: { "content-type": "application/json" }, body: body ? j(body) : undefined });
+  const r = await fetch(API + p, { method: body ? "POST" : "GET", headers: { "content-type": "application/json", ...(SESSION ? { authorization: `Bearer ${SESSION}` } : {}) }, body: body ? j(body) : undefined });
   const d = await r.json();
   if (!r.ok) throw new Error(`${p} -> ${JSON.stringify(d)}`);
   return d;
@@ -32,6 +33,12 @@ const pc = createPublicClient({ chain: monadTestnet, transport: http(cfg.rpcUrl,
 const key = await client.passkey.createKey({ rpId: "localhost", software: true });
 const acc = await api("/api/relay/account", { publicKey: key.publicKey });
 const principal = await client.passkey.attach(key, acc.address);
+// Session: one passkey signature over a chain-bound challenge, checked by the server via ERC-1271.
+{
+  const issuedAt = Date.now();
+  const digest = keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint256" }, { type: "address" }, { type: "uint256" }], ["mandate:session:v1", BigInt(cfg.chainId), acc.address, BigInt(issuedAt)]));
+  SESSION = (await api("/api/session", { account: acc.address, issuedAt, signature: await principal.signChallenge(digest) })).token;
+}
 const erc20 = parseAbi(["function approve(address,uint256) returns (bool)"]);
 const call = { target: cfg.demo.asset, value: 0n, data: encodeFunctionData({ abi: erc20, functionName: "approve", args: [cfg.demo.venue, 2n ** 256n - 1n] }) };
 const nonce = await pc.readContract({ address: acc.address, abi: PasskeyAccountAbi, functionName: "nonce" });

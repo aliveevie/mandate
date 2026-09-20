@@ -2,7 +2,9 @@ import express, { type Request, type Response, type NextFunction } from "express
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Address, Hex } from "viem";
-import { MandateError, parsePolicyVault, policyHashOf, type SignedMandate } from "@ibxlab/mandate";
+import { MandateError, type SignedMandate } from "@ibxlab/mandate";
+import { BlobStore } from "./blobs.js";
+import { mintSession, openSession, ownsAgent, rateLimit, requireSession, sessionAccount } from "./session.js";
 import { config } from "./config.js";
 import { chain, deployAccount, deployer, explorerTx, mandateAddresses, publicClient, relayExecute, relayerBalance, sdk } from "./chain.js";
 import { activateAgent, agentForMandate, agentState, claimAgentIdentity, forceOutOfBounds, getAgent, listAgents, prepareAgent, provisionAgent, publicView, startAgent, stopAgent, sweepAll } from "./agents.js";
@@ -13,7 +15,12 @@ import { executeTypedData, SignerAccountAbi, type Mandate } from "@ibxlab/mandat
 import { deployerWallet, erc20Abi } from "./chain.js";
 
 const app = express();
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "256kb" }));
+// Everything that costs the relayer gas or creates state is rate limited per IP; reads are generous.
+const writeLimit = rateLimit(30, 60_000);
+const spendLimit = rateLimit(6, 60_000);
+app.use((req, res, next) => (req.method === "GET" ? rateLimit(240, 60_000)(req, res, next) : writeLimit(req, res, next)));
 
 const json = (res: Response, body: unknown, status = 200) =>
   res.status(status).type("application/json").send(JSON.stringify(body, (_, v) => (typeof v === "bigint" ? v.toString() : v)));
@@ -51,6 +58,16 @@ const requireFunds = wrap(async (_req, res, next) => {
   }
   next();
 }) as unknown as (req: Request, res: Response, next: NextFunction) => void;
+
+// ------------------------------------------------------------------ sessions (bind a browser to a principal)
+
+app.post(
+  "/api/session",
+  wrap(async (req, res) => {
+    const { account, issuedAt, signature } = req.body as { account: Address; issuedAt: number; signature: Hex };
+    json(res, { account, ...(await openSession({ account, issuedAt: Number(issuedAt), signature })) }, 201);
+  }),
+);
 
 app.post(
   "/api/relay/account",
@@ -128,26 +145,30 @@ app.get("/api/agents", (_req, res) => json(res, listAgents()));
 
 app.post(
   "/api/agents",
+  spendLimit,
+  requireSession,
   requireFunds,
   wrap(async (req, res) => {
-    const a = await provisionAgent((req.body as { label?: string })?.label);
+    const a = await provisionAgent((req.body as { label?: string })?.label, sessionAccount(req) ?? undefined);
     json(res, { ...publicView(a), explorer: explorerTx(a.registerTx) }, 201);
   }),
 );
 
 // Wallet mode: the user's wallet registers the ERC-8004 identity and funds the key; the relayer pays nothing.
-app.post("/api/agents/prepare", wrap(async (_req, res) => json(res, await prepareAgent(), 201)));
+app.post("/api/agents/prepare", spendLimit, requireSession, wrap(async (_req, res) => json(res, await prepareAgent(), 201)));
 app.post(
   "/api/agents/activate",
   wrap(async (req, res) => {
     const b = req.body as { agentKey: Address; agentId: string; registerTx: Hex; fundTx: Hex; fundedBy: Address };
-    const a = await activateAgent({ agentKey: b.agentKey, agentId: BigInt(b.agentId), registerTx: b.registerTx, fundTx: b.fundTx, fundedBy: b.fundedBy });
+    const a = await activateAgent({ agentKey: b.agentKey, agentId: BigInt(b.agentId), registerTx: b.registerTx, fundTx: b.fundTx, fundedBy: b.fundedBy, principal: sessionAccount(req) ?? undefined });
     json(res, publicView(a), 201);
   }),
 );
 
 app.post(
   "/api/agents/:id/run",
+  requireSession,
+  requireFunds,
   wrap(async (req, res) => {
     const { mandateHash } = req.body as { mandateHash?: Hex };
     if (!mandateHash) return json(res, { error: "mandateHash required" }, 400);
@@ -156,6 +177,7 @@ app.post(
     const a = holder ?? getAgent(req.params.id);
     if (!a) return json(res, { error: "unknown agent" }, 404);
     if (!holder) return json(res, { error: "NoAgentForMandate", message: "No provisioned agent holds this mandate's agentKey" }, 400);
+    if (!requireOwner(req, res, a)) return;
     startAgent(a, mandateHash);
     json(res, publicView(a));
   }),
@@ -164,9 +186,12 @@ app.post(
 // Mera PRF: the principal's passkey-derived per-agent key takes ownership of the agent's ERC-8004 identity.
 app.post(
   "/api/agents/:id/claim",
+  requireSession,
+  requireFunds,
   wrap(async (req, res) => {
     const a = getAgent(req.params.id);
     if (!a) return json(res, { error: "unknown agent" }, 404);
+    if (!requireOwner(req, res, a)) return;
     const { owner } = req.body as { owner?: Address };
     if (!owner) return json(res, { error: "owner required" }, 400);
     json(res, { ...(await claimAgentIdentity(a, owner)), agent: publicView(a) });
@@ -175,38 +200,36 @@ app.post(
 
 // ------------------------------------------------------------------ policy blob store (dumb: ciphertext in, ciphertext out)
 // The mandate's onchain policyHash commits to the vault; the server can neither read nor alter it. Any blob store works.
-const blobs = new Map<string, { vault: ReturnType<typeof parsePolicyVault>; at: number }>();
-const BLOB_LIMIT = 2_000;
+const blobs = new BlobStore(config.blobStorePath);
 
 app.put(
   "/api/blobs/:hash",
   wrap(async (req, res) => {
-    const hash = req.params.hash.toLowerCase();
-    let vault: ReturnType<typeof parsePolicyVault>;
-    try {
-      vault = parsePolicyVault(req.body);
-    } catch (e) {
-      return json(res, { error: "InvalidVault", message: (e as Error).message }, 400);
-    }
-    if (policyHashOf(vault) !== hash) return json(res, { error: "HashMismatch", message: "policyHash does not match the vault's canonical encoding" }, 400);
-    if (!blobs.has(hash) && blobs.size >= BLOB_LIMIT) blobs.delete(blobs.keys().next().value as string);
-    blobs.set(hash, { vault, at: Date.now() });
-    json(res, { policyHash: hash, stored: true }, 201);
+    const vault = blobs.put(req.params.hash, req.body);
+    json(res, { policyHash: req.params.hash.toLowerCase(), stored: true, size: blobs.size, credentialId: vault.credentialId }, 201);
   }),
 );
 
 app.get("/api/blobs/:hash", (req, res) => {
-  const b = blobs.get(req.params.hash.toLowerCase());
-  if (!b) return json(res, { error: "NotFound", message: "No policy vault stored for that policyHash" }, 404);
-  json(res, b.vault);
+  const v = blobs.get(req.params.hash);
+  if (!v) return json(res, { error: "NotFound", message: "No policy vault stored for that policyHash" }, 404);
+  json(res, v);
 });
 
-app.post("/api/agents/:id/stop", (req, res) => {
+app.post("/api/agents/:id/stop", requireSession, (req, res) => {
   const a = getAgent(req.params.id);
   if (!a) return json(res, { error: "unknown agent" }, 404);
+  if (!requireOwner(req, res, a)) return;
   stopAgent(a);
   json(res, publicView(a));
 });
+
+/** 403 unless the session's account is the agent's principal (or the wallet that funded it). */
+function requireOwner(req: Request, res: Response, a: { principal?: Address; fundedBy: Address }): boolean {
+  if (ownsAgent(sessionAccount(req), a, deployer.address)) return true;
+  json(res, { error: "NotYourAgent", message: "Only the principal that provisioned this agent can control it" }, 403);
+  return false;
+}
 
 /** Every mandate-scoped operation acts on the agent that holds the mandate's executing key. */
 async function resolveAgent(id: string, mandateHash?: Hex) {
@@ -219,10 +242,12 @@ async function resolveAgent(id: string, mandateHash?: Hex) {
 
 app.post(
   "/api/agents/:id/force-out-of-bounds",
+  requireSession,
   wrap(async (req, res) => {
     const { mandateHash } = req.body as { mandateHash?: Hex };
     const a = await resolveAgent(req.params.id, mandateHash);
     if (!a) return json(res, { error: "unknown agent" }, 404);
+    if (!requireOwner(req, res, a)) return;
     const hash = mandateHash ?? a.mandateHash;
     if (!hash) return json(res, { error: "mandateHash required" }, 400);
     json(res, { ...(await forceOutOfBounds(a, hash)), agent: publicView(a, hash) });
@@ -329,14 +354,15 @@ app.post(
     const { userId, wallet } = await privy!.sessions.embeddedWallet(identityToken);
     if (!wallet) return json(res, { error: "NoEmbeddedWallet", message: "This Privy user has no Ethereum embedded wallet" }, 400);
     const existing = principalByUser(userId);
-    if (existing) return json(res, { ...existing, delegated: wallet.delegated, signerId: privy!.keyQuorumId, resumed: true });
+    if (existing) return json(res, { ...existing, delegated: wallet.delegated, signerId: privy!.keyQuorumId, resumed: true, session: mintSession(existing.account) });
     const account = await sdk.passkey.deploySignerAccount(wallet.address);
     const mintTx = await deployerWallet.writeContract({ address: config.demo.asset, abi: erc20Abi, functionName: "mint", args: [account, config.demo.mintAmount] });
     await publicClient.waitForTransactionReceipt({ hash: mintTx });
     const scope = await privy!.sessions.createScopePolicy({ account });
     const p = { account, owner: wallet.address, walletId: wallet.walletId, userId, scopePolicyId: scope.policyId, createdAt: Date.now() };
     rememberPrincipal(p);
-    json(res, { ...p, delegated: wallet.delegated, signerId: privy!.keyQuorumId, scopeRules: scope.policy.rules, mintTx, resumed: false }, 201);
+    // The Privy identity token authenticated this user, so the browser session for the SignerAccount is issued here.
+    json(res, { ...p, delegated: wallet.delegated, signerId: privy!.keyQuorumId, scopeRules: scope.policy.rules, mintTx, resumed: false, session: mintSession(p.account) }, 201);
   }),
 );
 
@@ -407,8 +433,13 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (MandateError.is(err)) return json(res, { error: err.name, args: err.args.map(String), message: err.message }, 422);
   const message = (err as Error)?.message ?? String(err);
   const status = (err as { status?: number })?.status ?? 500;
-  if (status >= 500) console.error(message);
-  json(res, { error: status >= 500 ? "internal" : "request", message: message.slice(0, 500) }, status);
+  const code = (err as { code?: string })?.code;
+  if (status >= 500) {
+    console.error(message);
+    // Never echo stack traces or provider internals to the client.
+    return json(res, { error: "internal", message: "Something failed on the server; the operator has the details." }, 500);
+  }
+  json(res, { error: code ?? "request", message: message.slice(0, 500) }, status);
 });
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
