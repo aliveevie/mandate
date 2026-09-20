@@ -1,0 +1,1234 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A delegation and trust primitive for the agent economy on Monad.">
+      
+      
+      
+        <link rel="canonical" href="https://aliveevie.github.io/mandate/sdk-reference/">
+      
+      
+        <link rel="prev" href="../integrate/">
+      
+      
+        <link rel="next" href="../concepts/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>SDK reference - Mandate</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sdk-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Mandate" class="md-header__button md-logo" aria-label="Mandate" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Mandate
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              SDK reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/aliveevie/mandate" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    aliveevie/mandate
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Mandate" class="md-nav__button md-logo" aria-label="Mandate" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Mandate
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/aliveevie/mandate" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    aliveevie/mandate
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrate in 15 minutes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDK reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDK reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#createmandateclientconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        createMandateClient(config)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clientpasskey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        client.passkey
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clientmandate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        client.mandate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clientagent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        client.agent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clientreputation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        client.reputation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typed-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typed errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#eip-712-and-hashing-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EIP-712 and hashing helpers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#addresses-and-abis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addresses and ABIs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ibxlabmandateprf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        @ibxlab/mandate/prf
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ibxlabmandateprivy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        @ibxlab/mandate/privy
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../indexer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Indexer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../try-it/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Try the reference app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adopters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Who builds on Mandate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#createmandateclientconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        createMandateClient(config)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clientpasskey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        client.passkey
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clientmandate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        client.mandate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clientagent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        client.agent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clientreputation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        client.reputation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typed-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typed errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#eip-712-and-hashing-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EIP-712 and hashing helpers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#addresses-and-abis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addresses and ABIs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ibxlabmandateprf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        @ibxlab/mandate/prf
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ibxlabmandateprivy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        @ibxlab/mandate/privy
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="sdk-reference">SDK reference<a class="headerlink" href="#sdk-reference" title="Permanent link">&para;</a></h1>
+<p><code>@ibxlab/mandate</code> is a TypeScript SDK on top of viem. Three entry points:</p>
+<table>
+<thead>
+<tr>
+<th>Import</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@ibxlab/mandate</code></td>
+<td><code>createMandateClient</code>, typed errors, EIP-712 helpers, ABIs, addresses, policy-vault helpers</td>
+</tr>
+<tr>
+<td><code>@ibxlab/mandate/prf</code></td>
+<td>Mera PRF: namespaced salts, encrypted policy vaults, per-agent identities (browser)</td>
+</tr>
+<tr>
+<td><code>@ibxlab/mandate/privy</code></td>
+<td>Privy server-wallet integration: agent wallets, mandate-mirroring policies, session signers (server)</td>
+</tr>
+</tbody>
+</table>
+<p>All amounts are <code>bigint</code> in asset units. All hashes and addresses are <code>0x</code>-prefixed hex strings.</p>
+<h2 id="createmandateclientconfig"><code>createMandateClient(config)</code><a class="headerlink" href="#createmandateclientconfig" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nx">createMandateClient</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">chain?</span><span class="o">:</span><span class="w"> </span><span class="kt">Chain</span><span class="p">;</span><span class="w">                 </span><span class="c1">// default monadTestnet</span>
+<span class="w">  </span><span class="nx">rpcUrl?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w">               </span><span class="c1">// default: the chain's public RPC</span>
+<span class="w">  </span><span class="nx">transport?</span><span class="o">:</span><span class="w"> </span><span class="kt">Transport</span><span class="p">;</span><span class="w">         </span><span class="c1">// bring your own instead of rpcUrl</span>
+<span class="w">  </span><span class="nx">addresses?</span><span class="o">:</span><span class="w"> </span><span class="kt">Partial</span><span class="o">&lt;</span><span class="nx">MandateAddresses</span><span class="o">&gt;</span><span class="p">;</span><span class="w">  </span><span class="c1">// override the built-in deployment</span>
+<span class="w">  </span><span class="nx">signer?</span><span class="o">:</span><span class="w"> </span><span class="kt">Signer</span><span class="p">;</span><span class="w">               </span><span class="c1">// pays gas for principal-side txs (deploy, grant, revoke); optional for reads</span>
+<span class="w">  </span><span class="nx">storage?</span><span class="o">:</span><span class="w"> </span><span class="kt">PrincipalStorage</span><span class="p">;</span><span class="w">    </span><span class="c1">// where passkey.create persists the principal; default localStorage or memory</span>
+<span class="p">})</span><span class="o">:</span><span class="w"> </span><span class="nx">MandateClient</span>
+</code></pre></div>
+<p>The client exposes <code>publicClient</code>, <code>addresses</code>, and the four modules below. Reads are batched over one
+multicall-aware transport, so a screen refresh is one RPC round trip.</p>
+<h2 id="clientpasskey"><code>client.passkey</code><a class="headerlink" href="#clientpasskey" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Returns</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>create({ rpId, rpName?, userName?, software? })</code></td>
+<td><code>PasskeyPrincipal</code></td>
+<td>Creates the passkey (WebAuthn with the PRF extension requested, or a WebCrypto key with <code>software: true</code>), deploys its <code>PasskeyAccount</code> with <code>signer</code>, persists the principal</td>
+</tr>
+<tr>
+<td><code>createKey(opts)</code></td>
+<td><code>PasskeySigner</code></td>
+<td>Key only, no transaction. For relayer-deployed accounts: send <code>publicKey</code> to your server, then <code>attach</code></td>
+</tr>
+<tr>
+<td><code>deployAccount(signer, payer?)</code></td>
+<td><code>Address</code></td>
+<td>Deploys a <code>PasskeyAccount</code> for an existing key</td>
+</tr>
+<tr>
+<td><code>attach(signer, address)</code></td>
+<td><code>PasskeyPrincipal</code></td>
+<td>Binds a key to an already-deployed account; verifies the onchain public key matches</td>
+</tr>
+<tr>
+<td><code>save(principal)</code> / <code>load()</code> / <code>clear()</code></td>
+<td></td>
+<td>Persistence through the configured <code>storage</code></td>
+</tr>
+<tr>
+<td><code>fromJSON(stored)</code></td>
+<td><code>PasskeyPrincipal</code></td>
+<td>Rehydrate from <code>StoredPrincipal</code></td>
+</tr>
+<tr>
+<td><code>deploySignerAccount(owner, payer?)</code></td>
+<td><code>Address</code></td>
+<td>Deploys a <code>SignerAccount</code> for a secp256k1 owner (embedded wallet, EOA, ERC-1271 contract)</td>
+</tr>
+<tr>
+<td><code>attachSigner({ address, owner, signTypedData })</code></td>
+<td><code>SignerPrincipal</code></td>
+<td>Binds a deployed <code>SignerAccount</code> to whatever signs EIP-712 for its owner</td>
+</tr>
+</tbody>
+</table>
+<p>A <code>Principal</code> is either <code>{ kind: "webauthn" \| "software", address, publicKey, credentialId?, signChallenge(hex) }</code> or
+<code>{ kind: "signer", address, owner, signTypedData(td) }</code>.</p>
+<h2 id="clientmandate"><code>client.mandate</code><a class="headerlink" href="#clientmandate" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Returns</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>build(params)</code></td>
+<td><code>MandateDraft</code></td>
+<td>Pure. Flattens <code>targets: [{ address, selectors }]</code> into the onchain parallel arrays; refuses the protocol's own contracts as targets</td>
+</tr>
+<tr>
+<td><code>sign(draft, principal)</code></td>
+<td><code>SignedMandate</code></td>
+<td>Reads the principal's registry nonce, computes <code>hash</code> and the EIP-712 <code>digest</code>, signs with the principal</td>
+</tr>
+<tr>
+<td><code>grant(signed, { signer? })</code></td>
+<td><code>TxResult</code></td>
+<td>Sends <code>MandateRegistry.grant</code>. <code>signed.hash</code> is the mandate hash</td>
+</tr>
+<tr>
+<td><code>revoke(hash, principal, { signer? })</code></td>
+<td><code>TxResult</code></td>
+<td>Passkey- or EIP-712-authorised revoke through the account; effective in the block it lands</td>
+</tr>
+<tr>
+<td><code>revokeDigest(account, hash)</code></td>
+<td><code>Hex</code></td>
+<td>The digest a passkey must sign to revoke, for relayed flows</td>
+</tr>
+<tr>
+<td><code>revokeWithSignature(account, hash, signature)</code></td>
+<td><code>TxResult</code></td>
+<td>Relay a pre-signed revoke</td>
+</tr>
+<tr>
+<td><code>get(hash)</code></td>
+<td><code>Mandate</code></td>
+<td>The stored mandate</td>
+</tr>
+<tr>
+<td><code>state(hash)</code></td>
+<td><code>MandateState</code></td>
+<td><code>spent</code>, <code>spentThisBlock</code>, <code>remaining</code>, <code>remainingThisBlock</code>, <code>revoked</code>, <code>active</code>, <code>breaker</code> (<code>Armed</code>/<code>Tripped</code>/<code>Cooldown</code>), <code>drawdownBps</code></td>
+</tr>
+<tr>
+<td><code>validate(hash, target, selector, amount)</code></td>
+<td><code>void</code></td>
+<td>Dry run against <code>MandateRegistry.validate</code>; throws the typed error the chain would</td>
+</tr>
+</tbody>
+</table>
+<p><code>MandateParams</code>: <code>agentId</code>, <code>agentKey</code>, <code>targets</code>, <code>asset?</code> (default: the demo asset), <code>spendCap</code>, <code>perBlockCap</code>,
+<code>maxDrawdownBps</code> (<code>10000</code> disables the breaker), <code>validAfter?</code>, <code>validUntil</code> (Date or unix seconds), <code>policyHash?</code>.</p>
+<h2 id="clientagent"><code>client.agent</code><a class="headerlink" href="#clientagent" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">agent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">agent</span><span class="p">.</span><span class="nx">load</span><span class="p">({</span><span class="w"> </span><span class="nx">mandateHash</span><span class="p">,</span><span class="w"> </span><span class="nx">executor</span><span class="o">:</span><span class="w"> </span><span class="kt">Signer</span><span class="w"> </span><span class="p">});</span>
+<span class="nx">agent</span><span class="p">.</span><span class="nx">hash</span><span class="p">;</span><span class="w"> </span><span class="nx">agent</span><span class="p">.</span><span class="nx">address</span><span class="p">;</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">agent</span><span class="p">.</span><span class="nx">mandate</span><span class="p">();</span><span class="w">                 </span><span class="c1">// Mandate (cached)</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">agent</span><span class="p">.</span><span class="nx">state</span><span class="p">();</span><span class="w">                   </span><span class="c1">// MandateState</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">agent</span><span class="p">.</span><span class="nx">validate</span><span class="p">({</span><span class="w"> </span><span class="nx">target</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">amount</span><span class="w"> </span><span class="p">});</span><span class="w">   </span><span class="c1">// throws MandateError, sends nothing</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">agent</span><span class="p">.</span><span class="nx">execute</span><span class="p">({</span><span class="w"> </span><span class="nx">target</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">amount</span><span class="w"> </span><span class="p">});</span><span class="w">    </span><span class="c1">// validate -&gt; simulate -&gt; send -&gt; wait; returns TxResult</span>
+</code></pre></div>
+<p><code>amount</code> is the upper bound on <code>asset</code> outflow the call may cause. The executor measures the real outflow and reverts
+with <code>SpendExceedsDeclared</code> if it is higher.</p>
+<h2 id="clientreputation"><code>client.reputation</code><a class="headerlink" href="#clientreputation" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get(agentId)</code></td>
+<td><code>{ agentId, score, trips, executed, pnlBps, window, evidenceHash, attestations, erc8004: { count, value, decimals } }</code></td>
+</tr>
+<tr>
+<td><code>history(agentId)</code></td>
+<td><code>Attestation[]</code> oldest first: <code>complianceScore</code>, <code>tripCount</code>, <code>executedCount</code>, <code>realisedPnlBps</code>, <code>windowStart</code>, <code>windowEnd</code>, <code>evidenceHash</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="typed-errors">Typed errors<a class="headerlink" href="#typed-errors" title="Permanent link">&para;</a></h2>
+<p><code>MandateError</code> extends <code>Error</code>. <code>name</code> is the Solidity custom error name and <code>args</code> its decoded arguments, so
+<code>e instanceof MandateError &amp;&amp; e.name === "SpendCapExceeded"</code> narrows. Every revert from the registry, executor,
+breaker, accounts, submitter, adapter and CRE receiver is decoded; <code>decodeMandateError(data)</code> and
+<code>toMandateError(unknown)</code> are exported for callers that use viem directly.</p>
+<p><code>TargetNotAllowed(target, selector)</code> · <code>SpendCapExceeded(requested, remaining)</code> · <code>PerBlockCapExceeded(requested, remaining)</code> ·
+<code>MandateExpired(validUntil)</code> · <code>MandateNotYetValid(validAfter)</code> · <code>MandateRevoked(hash)</code> · <code>Tripped(hash)</code> ·
+<code>NotAgentKey(caller, agentKey)</code> · <code>InvalidSignature()</code> · <code>InvalidNonce(expected, provided)</code> · <code>SpendExceedsDeclared(actual, declared)</code> ·
+<code>NotAttestor()</code> · <code>InvalidScore(score)</code> · <code>InvalidWindow(start, end)</code> · <code>StaleReport(agentId, windowEnd, last)</code> and the rest.</p>
+<h2 id="eip-712-and-hashing-helpers">EIP-712 and hashing helpers<a class="headerlink" href="#eip-712-and-hashing-helpers" title="Permanent link">&para;</a></h2>
+<p><code>hashMandate(m)</code>, <code>mandateDigest(m, chainId, registry)</code>, <code>mandateTypedData(m, chainId, registry)</code>, <code>revokeTypedData(...)</code>,
+<code>executeTypedData(...)</code>, <code>flattenTargets(targets)</code>, <code>toSelector("buy(address,uint256)")</code>, <code>MANDATE_TYPEHASH</code>,
+<code>MANDATE_TYPE_STRING</code>. The SDK's hash equals <code>MandateRegistry.hashMandate</code> byte for byte; the anvil e2e asserts it.</p>
+<h2 id="addresses-and-abis">Addresses and ABIs<a class="headerlink" href="#addresses-and-abis" title="Permanent link">&para;</a></h2>
+<p><code>deployments[chainId]</code>, <code>addressesFor(chainId)</code>, <code>testnetDemo</code> (demo asset and venue), <code>MONAD_TESTNET_CHAIN_ID</code>,
+<code>P256_PRECOMPILE</code>, and every ABI: <code>MandateRegistryAbi</code>, <code>MandateExecutorAbi</code>, <code>RiskBreakerAbi</code>, <code>PasskeyAccountAbi</code>,
+<code>SignerAccountAbi</code>, <code>PrivateSubmitterAbi</code>, <code>ERC8004ReputationAdapterAbi</code>, <code>CREAttestationReceiverAbi</code>,
+<code>ERC8004IdentityRegistryAbi</code>, <code>ERC8004ReputationRegistryAbi</code>.</p>
+<h2 id="ibxlabmandateprf"><code>@ibxlab/mandate/prf</code><a class="headerlink" href="#ibxlabmandateprf" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PRF_NAMESPACE.policy(principal, nonce)</code> / <code>.agentIdentity(agentId)</code></td>
+<td>The two namespaces; salt is <code>sha256(namespace)</code></td>
+</tr>
+<tr>
+<td><code>prfSupported()</code></td>
+<td><code>true</code> / <code>false</code> / <code>null</code> (browser cannot say)</td>
+</tr>
+<tr>
+<td><code>evaluatePrf({ rpId, credentialId?, namespace })</code></td>
+<td>One ceremony; returns <code>{ credentialId, output }</code></td>
+</tr>
+<tr>
+<td><code>encryptPolicy({ rpId, credentialId?, principal, nonce, policy })</code></td>
+<td><code>{ vault, policyHash }</code>; AES-256-GCM under an HKDF key from the namespace's PRF output</td>
+</tr>
+<tr>
+<td><code>decryptPolicy({ rpId, vault })</code></td>
+<td><code>{ policy, policyHash, credentialId }</code>; throws on the wrong passkey or a tampered vault</td>
+</tr>
+<tr>
+<td><code>deriveAgentIdentity({ rpId, credentialId?, agentId })</code></td>
+<td><code>{ address, account (viem LocalAccount), session, end() }</code></td>
+</tr>
+<tr>
+<td><code>policyHashOf(vault)</code> / <code>parsePolicyVault(json)</code> / <code>policyVaultCanonical(vault)</code></td>
+<td>Also exported from the main entry for servers</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ibxlabmandateprivy"><code>@ibxlab/mandate/privy</code><a class="headerlink" href="#ibxlabmandateprivy" title="Permanent link">&para;</a></h2>
+<p><code>createPrivyIntegration({ appId, appSecret, authorizationKey, keyQuorumId, chainId, addresses })</code> returns
+<code>agents.createWallet / account / mirrorMandate / revokeMirror / probe / listWallets / setRevokedPolicy</code> and
+<code>sessions.embeddedWallet / createScopePolicy / signTypedData / principal</code>. Pure builders <code>buildMandatePolicy</code>,
+<code>revokedPolicyRules</code> and <code>buildSessionSignerPolicy</code> produce the policy JSON without network calls and are unit-tested.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../integrate/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Integrate in 15 minutes">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Integrate in 15 minutes
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../concepts/" class="md-footer__link md-footer__link--next" aria-label="Next: Concepts">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Concepts
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "content.code.copy", "content.tabs.link", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
