@@ -47,8 +47,13 @@ markdown_extensions:
 nav:
   - Overview: index.md
   - Quickstart: quickstart.md
+  - Integrate in 15 minutes: integrate.md
+  - SDK reference: sdk-reference.md
   - Concepts: concepts.md
   - Contracts: contracts.md
   - Indexer: indexer.md
   - Security: security.md
   - Integrations: integrations.md
+  - Try the reference app: try-it.md
+  - Who builds on Mandate: adopters.md
+  - Roadmap: roadmap.md

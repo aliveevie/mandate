@@ -1,0 +1,42 @@
+name: Integration
+description: You are building on Mandate (issuing mandates, executing under one, or reading reputation) and want a hand or a listing.
+title: "Integration: <your project>"
+labels: [integration]
+body:
+  - type: input
+    id: project
+    attributes:
+      label: Project
+      description: Name and a link (repo, site or docs).
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: How you use Mandate
+      multiple: true
+      options:
+        - Principal side — my users issue mandates to agents (wallet, passkey app, agent platform)
+        - Agent side — my agent executes under mandates (trading, consumer, ops agents)
+        - Reputation consumer — I read ERC-8004 attestations written by the Mandate attestor
+        - Venue — my contracts are mandate targets and I want to be listed
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: Where you are
+      description: Prototype, testnet, production; which SDK calls you use; anything that blocked you.
+    validations:
+      required: true
+  - type: textarea
+    id: needs
+    attributes:
+      label: What you need from us
+      description: API changes, docs, a review of your mandate parameters, an audit slot (the first five integrators get a free IBX Lab review).
+  - type: checkboxes
+    id: listing
+    attributes:
+      label: Listing
+      options:
+        - label: List us in docs/adopters.md once the integration is live
