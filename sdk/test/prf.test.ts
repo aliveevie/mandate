@@ -57,6 +57,9 @@ describe("encrypted policy blob", () => {
     const b = await encryptPolicy({ rpId: "localhost", principal, nonce: 3n, policy, prfOutput: prfA });
     expect(a.vault.ciphertext).not.toBe(b.vault.ciphertext);
     expect(a.policyHash).not.toBe(b.policyHash);
+    // a vault sealed from a supplied PRF output (no credential id) still parses and decrypts
+    expect(parsePolicyVault(JSON.stringify(a.vault)).credentialId).toBe("unbound");
+    expect((await decryptPolicy<typeof policy>({ rpId: "localhost", vault: JSON.stringify(a.vault), prfOutput: prfA })).policy).toEqual(policy);
   });
 
   it("rejects malformed vaults at the boundary", () => {

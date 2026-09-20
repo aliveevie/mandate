@@ -108,7 +108,8 @@ export interface EncryptPolicyOptions extends PrfCeremonyOptions {
 /** Encrypt `policy` to the passkey; returns the vault to store and the `policyHash` to put in the mandate. */
 export async function encryptPolicy(opts: EncryptPolicyOptions): Promise<{ vault: PolicyVault; policyHash: Hex; credentialId: string }> {
   const namespace = PRF_NAMESPACE.policy(opts.principal, opts.nonce);
-  const prf = opts.prfOutput ? { output: opts.prfOutput, credentialId: opts.credentialId ?? "" } : await evaluatePrf({ ...opts, namespace });
+  // A caller that already holds the PRF output may not know the credential id; the vault stays parseable ("unbound").
+  const prf = opts.prfOutput ? { output: opts.prfOutput, credentialId: opts.credentialId || "unbound" } : await evaluatePrf({ ...opts, namespace });
   const key = await policyKey(prf.output, ["encrypt"]);
   const iv = randomBytes(12);
   const plaintext = utf8(JSON.stringify(opts.policy));
@@ -165,7 +166,7 @@ export interface DeriveAgentIdentityOptions extends PrfCeremonyOptions {
 export async function deriveAgentIdentity(opts: DeriveAgentIdentityOptions): Promise<AgentIdentity> {
   const agentId = BigInt(opts.agentId);
   const namespace = PRF_NAMESPACE.agentIdentity(agentId);
-  const prf = opts.prfOutput ? { output: opts.prfOutput, credentialId: opts.credentialId ?? "" } : await evaluatePrf({ ...opts, namespace });
+  const prf = opts.prfOutput ? { output: opts.prfOutput, credentialId: opts.credentialId || "unbound" } : await evaluatePrf({ ...opts, namespace });
   let session: Secp256k1SigningSession | undefined;
   for (let counter = 0; counter < 8 && !session; counter++) {
     const privateKey = await hkdf(prf.output, `${HKDF_INFO.agentIdentity}:${agentId}${counter ? `:${counter}` : ""}`, 32);
