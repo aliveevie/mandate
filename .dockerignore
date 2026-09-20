@@ -1,0 +1,21 @@
+# Keep the build context small and free of local state and secrets.
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+.logs
+.git
+.github
+contracts/out
+contracts/cache
+contracts/broadcast
+contracts/lib
+cre
+indexer/generated
+indexer/.envio
+docs
+site
+apps/server/data
+apps/web/e2e/*.png
+*.log

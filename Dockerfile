@@ -21,6 +21,9 @@ ENV NODE_ENV=production PORT=8787 PUBLIC_DIR=./public
 # The server is bundled with all dependencies inlined, so no node_modules is needed at runtime.
 COPY --from=build /app/apps/server/dist ./dist
 COPY --from=build /app/apps/web/dist ./public
+# Encrypted policy vaults (ciphertext only) persist here; mount a volume at /app/data to keep them across restarts.
+RUN mkdir -p /app/data
+ENV BLOB_STORE_PATH=/app/data/policy-vaults.json
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s CMD wget -qO- http://127.0.0.1:8787/healthz || exit 1
 CMD ["node", "dist/index.js"]
