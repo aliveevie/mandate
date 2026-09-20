@@ -15,7 +15,7 @@ See `MANDATE_PROTOCOL_BUILD_SPEC.md` for the build plan.
 | Reference app (`apps/`) | Vite UI + Express server, Dockerised; `docker build . && docker run -p 8787:8787 -e DEMO_AGENT_DEPLOYER_KEY=… mandate-reference` |
 | Chainlink CRE (`cre/`) | `mandate-reputation-attestor` workflow is the only reputation writer; receiver live on Monad testnet, simulation logs committed (`cre/simulation*.log`) |
 | Mera PRF (`sdk/src/prf.ts`) | One passkey, many keys: passkey-encrypted agent policy committed by `policyHash`, passkey-derived ERC-8004 identity owners, cross-device re-derivation in the app |
-| Bounty PRs | Privy ✔ · Chainlink CRE ✔ · Mera PRF ✔ |
+| Integrations | Privy ✔ · Chainlink CRE ✔ · Mera PRF ✔ (see `docs/integrations.md`) |
 
 **Private execution mode:** the testnet `PrivateSubmitter` is deployed in **BTX mode**, which routes mandated calls through Monad's encrypted mempool so strategy and policy are not observable before inclusion. The same contract ships a commit-reveal mode behind the same `IPrivateSubmit` interface; redeploying with `SUBMITTER_MODE=1` switches to it. BTX is the production target.
 
@@ -46,6 +46,6 @@ With `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` and `PRIVY_KE
 
 ### Deploy to Render
 
-`render.yaml` is a Blueprint: in the Render dashboard choose **New → Blueprint**, pick this repository, and set `DEMO_AGENT_DEPLOYER_KEY` to a funded Monad testnet key when prompted. The Docker image serves the UI and API on one service with `/healthz` for health checks. WebAuthn needs HTTPS and an `rpId` equal to the hostname; the UI always uses `window.location.hostname`, so the Render domain works with no build-time configuration. The free plan sleeps when idle: first load can take about 30 seconds.
+`render.yaml` is a Blueprint: in the Render dashboard choose **New → Blueprint**, pick this repository, and set `DEMO_AGENT_DEPLOYER_KEY` to a funded Monad testnet key when prompted. The Docker image serves the UI and API on one service with `/healthz` for health checks. WebAuthn needs HTTPS and an `rpId` equal to the hostname; the UI always uses `window.location.hostname`, so the Render domain works with no build-time configuration. The free plan sleeps when idle: first load can take about 30 seconds. Set the four `PRIVY_*` variables to turn on Privy server wallets, policies and session signers (without them the demo falls back to local agent keys). Encrypted policy vaults persist at `BLOB_STORE_PATH`; attach a Render Disk at `/app/data` if they must survive redeploys, otherwise the app falls back to the browser's local copy.
 
 Copy `.env.example` → `.env` / `.env.local` and fill values locally. Those files are gitignored.

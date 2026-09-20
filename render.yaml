@@ -31,6 +31,16 @@ services:
         sync: false
       - key: PRIVY_APP_SECRET
         sync: false
+      - key: PRIVY_AUTHORIZATION_KEY
+        sync: false   # with PRIVY_KEY_QUORUM_ID: enables Privy server wallets, policies and session signers
+      - key: PRIVY_KEY_QUORUM_ID
+        sync: false
+      - key: BLOB_STORE_PATH
+        value: "/app/data/policy-vaults.json"   # encrypted policy vaults; ciphertext only
+      - key: RELAYER_MIN_MON
+        value: "0.6"
+      - key: DEMO_AGENT_GAS_MON
+        value: "0.3"
       # Funded Monad testnet key: pays gas for account deployment, grants, revokes, agent funding. Never a user key.
       - key: DEMO_AGENT_DEPLOYER_KEY
         sync: false

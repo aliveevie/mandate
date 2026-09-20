@@ -1,6 +1,6 @@
 # Integrations
 
-Mandate is meant to sit under other people's agents. This page collects the integration surfaces that exist today and the three partner integrations that ship as separate pull requests.
+Mandate is meant to sit under other people's agents. This page collects the integration surfaces that exist today and the three partner integrations that ship with the protocol.
 
 ## Integrate Mandate into your agent stack
 
@@ -67,7 +67,7 @@ pnpm --filter server e2e:privy    # server-wallet agent -> grant -> policy mirro
 
 ## Chainlink CRE
 
-Ships in the `feat/cre` pull request. The `mandate-reputation-attestor` workflow (`cre/`) is the **only writer of
+The `mandate-reputation-attestor` workflow (`cre/`) is the **only writer of
 Mandate reputation**: its onchain identity, `CREAttestationReceiver`, holds the `ERC8004ReputationAdapter` Attestor role,
 so every score in the ERC-8004 Reputation Registry was computed by the DON from verifiable inputs. Agents cannot
 self-attest and neither can the deployer any more.
@@ -80,20 +80,27 @@ self-attest and neither can the deployer any more.
    `Mandate` for the window). Indexer and API calls run in node mode with identical-aggregation consensus.
 3. **Onchain truth** — one Multicall3 read returns the adapter's attestor, the latest attestation per agent and, per mandate,
    `getMandate`, `getState`, the breaker `stateOf`, `currentDrawdownBps` and `equityOf`. CRE allows 15 chain reads per
-   execution and Monad's public RPC caps `eth_getLogs` at 100 blocks, so the whole run fits in 1 header + ≤12 log
-   chunks + 1 multicall (+1 write).
+   execution and Monad's public RPC caps `eth_getLogs` at 100 blocks, so the whole run fits in 1 header + ≤13 log
+   chunks + 1 multicall (+1 write); the config schema refuses `tailBlocks`/`logChunkBlocks` combinations that exceed it.
 4. **External context** — the MON/USD mark from CoinGecko (median consensus) and a structured risk note from Claude
-   (`claude-opus-5`, JSON-schema output, consensus by field: median `riskScore`, identical `level`/`flags`). The LLM is
-   advisory: without a key, or if the nodes disagree, the attestation proceeds without it and the evidence says so.
+   (`claude-opus-5`, JSON-schema output). Each node reports only the integer `riskScore`; the DON takes the median and
+   `level` is derived from it, so free text never has to agree byte for byte across nodes (each node's summary is in its
+   own log). The LLM is advisory: without a key the attestation proceeds without it and the evidence says so.
 5. **Score** — `scoring.ts` is pure and unit-tested: 100 minus 15 per trip (max 45), 10 while frozen, up to 20 for drawdown
    relative to the mandate's own limit, 5 above 90% cap utilisation, 5 for an early revoke, 10/5 for a high/medium LLM
    level. `realisedPnlBps` is mark-to-peak equity from the breaker.
-6. **Evidence** — `evidenceHash = keccak256(abi.encode(Evidence))` over every input that moved the score (window, blocks,
-   mandate hashes, execution and trip tx hashes, counts, spend, PnL, drawdown, utilisation, mark price, LLM score/level,
-   sources). The full evidence JSON is logged; `bun run verify-evidence '<json>'` recomputes the hash and finds the
-   matching attestation onchain.
+6. **Evidence** — `evidenceHash = keccak256(abi.encode(Evidence))` (schema v2) over the window, blocks, every
+   per-mandate onchain input exactly as read (`spendCap`, `maxDrawdownBps`, `spent`, `revoked`, `validUntil`, breaker
+   phase, peak and current equity, drawdown, trip block), execution and trip tx hashes, counts, spend, PnL, the penalty
+   breakdown, mark price, LLM score/level and the list of sources. `complianceScore` is therefore recomputable from the
+   evidence alone. The evidence JSON is logged in numbered chunks; `bun run scripts/verify-evidence.ts <simulation.log>`
+   reassembles it, recomputes the hash and finds the matching attestation onchain.
 7. **Write** — `runtime.report(abi.encode(agentId, Attestation))` → `evmClient.writeReport` → KeystoneForwarder →
    `CREAttestationReceiver.onReport` → `adapter.attest` → mirrored into the ERC-8004 registry as `giveFeedback`.
+
+**Fail-safe by default.** If a configured source (the indexer or the reference API) is unreachable in a run, the run is
+*degraded*: missing trips or executions would only ever raise a score, so no attestation is written unless
+`attestWhenDegraded` is set. One agent's failed write never blocks the others; the run still reports the failure.
 
 ### The receiver
 
@@ -134,7 +141,7 @@ chain list yet; deploying to a DON uses the `production-settings` target and the
 
 ## Mera PRF
 
-Ships in the `feat/mera-prf` pull request. **One passkey, many keys**: the passkey that owns the `PasskeyAccount` also
+**One passkey, many keys**: the passkey that owns the `PasskeyAccount` also
 does two jobs that are not wallet signing, each under its own PRF namespace, with nothing derived ever stored.
 
 | Namespace (PRF salt = `sha256(namespace)`) | Derivation | Job |

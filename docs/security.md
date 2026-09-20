@@ -22,7 +22,7 @@ Mandate assumes the agent is untrusted. It may be buggy, compromised, or adversa
 | 6 | Only the attestor can write reputation | Unit test: agent, principal and owner all rejected with `NotAttestor`; SDK test repeats it live |
 | 7 | No secret ever appears in a contract, log, committed file or server DB | Review checklist below |
 
-Run them: `cd contracts && forge test` (67 tests, invariants at 256 runs under the CI profile).
+Run them: `cd contracts && forge test` (92 tests, invariants at 256 runs under the CI profile).
 
 ## Design decisions that matter for security
 
@@ -36,7 +36,7 @@ Run them: `cd contracts && forge test` (67 tests, invariants at 256 runs under t
 ## Secret handling checklist (property 7)
 
 - Passkey private keys never leave the authenticator. The SDK stores only the credential id and public key.
-- The software passkey used by tests and the quickstart is a WebCrypto key held in the caller's storage. It is documented as a hot key and is never written by the SDK to disk on its own.
+- The software passkey used by tests and the quickstart is a WebCrypto key. `passkey.create({ software: true })` persists its JWK in the storage the client was configured with (browser `localStorage` by default, or the `storage` adapter you pass) so `load()` works across reloads. It is a hot key for development: never use it for real funds, and call `passkey.clear()` to remove it.
 - `.env` files, Foundry keystores and broadcast caches are gitignored. `git ls-files` contains no env, keystore or broadcast file.
 - Deploy scripts sign from a Foundry keystore, not from a private key in the environment.
 - Contracts emit no secret material. Events carry hashes, addresses and amounts only.
@@ -65,3 +65,9 @@ Reproduce: `pipx install slither-analyzer && cd contracts && slither .`
 ## Secret scan
 
 `gitleaks git` over the full history reports no secrets. Three high-entropy hex values it flags (`.gitleaks.toml`) are the on-chain mandate, evidence and transaction hashes recorded in `contracts/deployments/monad-testnet.json` and the docs. Private keys are held only in Foundry keystores and untracked `.env` files; the deploy scripts sign from the keystore.
+
+## Scope notes (what the caps do and do not bound)
+
+- **Spend is measured inside `execute`.** `spendCap` and `perBlockCap` bound the principal's balance change during a mandated call. A whitelisted venue that also holds a standing ERC-20 allowance from the principal can move funds outside `execute`; that movement is not spend and is not capped. Grant allowances to venues you trust, size them to the mandate, and prefer venues that pull exactly the call's amount.
+- **Protocol contracts are never targets.** Mandated calls run as the principal, and the registry, breaker, executor, submitter and adapter gate privileged functions on the principal. The SDK's `mandate.build` refuses them as targets; integrators building mandates by hand must do the same.
+- **Peak equity is a raw balance.** Anyone may call `checkpoint`, and a transient balance spike (a donation later pulled back) ratchets the peak and can trip the breaker early. The principal recovers with `resetPeak`. This is fail-safe, not fail-open.
