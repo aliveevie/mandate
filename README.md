@@ -11,7 +11,7 @@ Mandate is infrastructure. The reference app exists to prove the SDK; the custom
 | **Docs** | https://aliveevie.github.io/mandate/ — [quickstart](https://aliveevie.github.io/mandate/quickstart/) · [integrate in 15 minutes](https://aliveevie.github.io/mandate/integrate/) · [SDK reference](https://aliveevie.github.io/mandate/sdk-reference/) · [security model](https://aliveevie.github.io/mandate/security/) |
 | **Contracts** | Live on Monad testnet (chain id 10143). Addresses and every deployment tx: [`contracts/deployments/monad-testnet.json`](contracts/deployments/monad-testnet.json) |
 | **SDK** | [`@ibxlab/mandate` on npm](https://www.npmjs.com/package/@ibxlab/mandate) (TypeScript, viem): `pnpm add @ibxlab/mandate viem`. Source in [`sdk/`](sdk/); `cd sdk && pnpm quickstart` runs the whole protocol against testnet |
-| **Reference app** | Passkey → grant → agent → reputation, plus the Mera cross-device check. [How to use it](https://aliveevie.github.io/mandate/try-it/) |
+| **Live app** | **https://mandate-reference.onrender.com** — passkey → grant → agent → reputation, plus the Mera cross-device check. No credentials needed. [How to use it](https://aliveevie.github.io/mandate/try-it/) |
 | **Who builds on it** | [Adopters and why not build it yourself](https://aliveevie.github.io/mandate/adopters/) · [Roadmap](https://aliveevie.github.io/mandate/roadmap/) |
 
 ## Thirty seconds of code

@@ -6,7 +6,7 @@ exists to show every SDK call working against the live deployment. Nothing in it
 
 ## Access
 
-- **Live link:** see the repository README for the current deployment URL.
+- **Live link:** https://mandate-reference.onrender.com (Monad testnet). It runs on a free instance that sleeps when idle, so the first load can take about 30 seconds.
 - **No account, no credentials.** The passkey path needs a device with Face ID, Touch ID, Windows Hello or a security key, over HTTPS. There is a "software key" checkbox for browsers without a platform authenticator.
 - **Gas:** by default the app runs in gasless mode and its relayer pays. Connect a wallet (MetaMask, Rabby or Phantom on Monad testnet, chain id 10143) to pay your own gas instead; the **Faucet** button in the header opens the Monad faucet.
 - **Sign in with Privy** is offered when the deployment has Privy configured: email or Google, an embedded wallet owns the account, and a scoped session signer grants and revokes without prompts.
