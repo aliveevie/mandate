@@ -95,7 +95,7 @@ const rep = await client.reputation.get(1831n);  // { score, trips, executed, pn
 
 `MandateError.name` is the Solidity error name and `MandateError.args` its decoded arguments:
 
-`TargetNotAllowed(target, selector)` · `SpendCapExceeded(requested, remaining)` · `PerBlockCapExceeded(requested, remaining)` · `MandateExpired(validUntil)` · `MandateNotYetValid(validAfter)` · `MandateRevoked(hash)` · `Tripped(hash)` · `NotAgentKey(caller, agentKey)` · `InvalidSignature()` · `InvalidNonce(expected, provided)` · `SpendExceedsDeclared(actual, declared)` · `NotAttestor()` and the rest of the protocol's errors.
+`TargetNotAllowed(target, selector)` · `SpendCapExceeded(requested, remaining)` · `PerBlockCapExceeded(requested, remaining)` · `MandateExpired(validUntil)` · `MandateNotYetValid(validAfter)` · `MandateRevoked(hash)` · `Tripped(hash)` · `NotAgentKey(caller, agentKey)` · `InvalidSignature()` · `InvalidNonce(expected, provided)` · `SpendExceedsDeclared(actual, declared)` · `NotAttestor()` · `StaleReport(agentId, windowEnd, last)` and the rest of the protocol's errors, including the accounts and the CRE receiver.
 
 ### Passkeys
 
@@ -105,6 +105,22 @@ const rep = await client.reputation.get(1831n);  // { score, trips, executed, pn
 ### Addresses
 
 Defaults for Monad testnet are built in (`deployments[10143]`). Pass `addresses` to point at another deployment. All addresses and deployment transaction hashes are in `contracts/deployments/monad-testnet.json`.
+
+## Examples
+
+| Script | What it shows |
+|---|---|
+| `pnpm quickstart` | The whole protocol in one run: passkey principal, grant, execute, typed refusal, revoke, reputation |
+| `pnpm example:agent` | The agent side only: load a mandate with the executing key, read the bounds, execute inside them, watch an out-of-bounds call refused before it is sent (`--dry` never sends) |
+| `pnpm example:tool` | Mandate as one tool for any LLM agent loop: the tool schema is generated from the mandate, the handler returns the protocol's typed refusal as the tool result |
+
+## Entry points
+
+- `@ibxlab/mandate` — client, typed errors, EIP-712 helpers, ABIs, addresses, policy-vault helpers.
+- `@ibxlab/mandate/prf` — Mera PRF: encrypted policy vaults and per-agent identities from the principal's passkey (browser).
+- `@ibxlab/mandate/privy` — Privy server wallets as agent keys, mandate-mirroring wallet policies, session signers (server).
+
+Full signatures: [SDK reference](https://aliveevie.github.io/mandate/sdk-reference/).
 
 ## Test
 
