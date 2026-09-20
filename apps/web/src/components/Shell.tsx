@@ -78,7 +78,11 @@ export function Shell({ cfg, screen, go, done, children, principalAddr, mode }: 
       </div>
 
       <footer className="mx-auto max-w-7xl px-4 pb-10 pt-4 text-[11px] text-white/35 md:px-6">
-        Built on <a className="text-white/60 hover:text-white" href="https://github.com/aliveevie/mandate" target="_blank" rel="noreferrer">@ibxlab/mandate</a>. Your passkey never leaves your device. Registry <span className="mono">{cfg.addresses.registry}</span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span>Built on <a className="text-white/60 hover:text-white" href="https://github.com/aliveevie/mandate" target="_blank" rel="noreferrer">@ibxlab/mandate</a>. Your passkey never leaves your device.</span>
+          <span>Build on it: <a className="text-white/60 hover:text-white" href="https://aliveevie.github.io/mandate/integrate/" target="_blank" rel="noreferrer">integrate in 15 minutes</a> · <a className="text-white/60 hover:text-white" href="https://aliveevie.github.io/mandate/sdk-reference/" target="_blank" rel="noreferrer">SDK reference</a> · <a className="text-white/60 hover:text-white" href="https://aliveevie.github.io/mandate/security/" target="_blank" rel="noreferrer">security model</a></span>
+          <span>Registry <span className="mono">{cfg.addresses.registry}</span></span>
+        </div>
       </footer>
     </div>
   );
