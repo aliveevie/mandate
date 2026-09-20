@@ -28,6 +28,8 @@ export interface DemoAgent {
   fundTx: Hex;
   /** Who paid for this agent's gas: the relayer, or a user's wallet in wallet mode. Sweeps go back here. */
   fundedBy: Address;
+  /** The principal account (PasskeyAccount / SignerAccount) whose session provisioned this agent; it alone may control it. */
+  principal?: Address;
   /** Wallet-mode agents are created pending and activated once the wallet has registered + funded them. */
   pending?: boolean;
   /** Who holds the executing key: an in-memory demo key, or a Privy server wallet (TEE, never exported). */
@@ -76,6 +78,7 @@ export function publicView(a: DemoAgent, mandateHash?: Hex) {
     registerTx: a.registerTx,
     fundTx: a.fundTx,
     fundedBy: a.fundedBy,
+    principal: a.principal,
     pending: !!a.pending,
     custody: a.custody,
     privyWalletId: a.privyWallet?.walletId,
@@ -118,7 +121,7 @@ async function newAgentKey(label: string): Promise<{ account: Account; custody: 
   return { account: privateKeyToAccount(generatePrivateKey()), custody: "local" };
 }
 
-export async function provisionAgent(label = "demo-agent"): Promise<DemoAgent> {
+export async function provisionAgent(label = "demo-agent", principal?: Address): Promise<DemoAgent> {
   const { account, custody, privyWallet } = await newAgentKey(label);
   // Plain transfers have been seen reverting once on Monad testnet; retry before giving up.
   let fundTx: Hex | undefined;
@@ -142,6 +145,7 @@ export async function provisionAgent(label = "demo-agent"): Promise<DemoAgent> {
     registerTx: tx,
     fundTx,
     fundedBy: deployer.address,
+    principal,
     createdAt: Date.now(),
     running: false,
     custody,
@@ -163,7 +167,7 @@ export async function prepareAgent(): Promise<{ agentKey: Address; custody: "loc
 }
 
 /** Wallet mode, step 2: verify the wallet's work on-chain and activate the agent. */
-export async function activateAgent(input: { agentKey: Address; agentId: bigint; registerTx: Hex; fundTx: Hex; fundedBy: Address }): Promise<DemoAgent> {
+export async function activateAgent(input: { agentKey: Address; agentId: bigint; registerTx: Hex; fundTx: Hex; fundedBy: Address; principal?: Address }): Promise<DemoAgent> {
   const k = pendingKeys.get(input.agentKey);
   if (!k) throw new Error("Unknown pending agent key");
   const owner = await identityOwnerOf(input.agentId);
@@ -183,6 +187,7 @@ export async function activateAgent(input: { agentKey: Address; agentId: bigint;
     registerTx: input.registerTx,
     fundTx: input.fundTx,
     fundedBy: input.fundedBy,
+    principal: input.principal,
     createdAt: Date.now(),
     running: false,
     custody: k.custody,

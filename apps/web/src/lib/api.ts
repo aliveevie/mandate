@@ -1,8 +1,16 @@
+function bearer(): Record<string, string> {
+  try {
+    const raw = sessionStorage.getItem("mandate.session");
+    const s = raw ? (JSON.parse(raw) as { token?: string; expiresAt?: number }) : null;
+    return s?.token && (s.expiresAt ?? 0) > Date.now() ? { authorization: `Bearer ${s.token}` } : {};
+  } catch { return {}; }
+}
+
 export async function api<T>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
   const res = await fetch(path, {
     ...init,
     method: init?.method ?? (init?.json ? "POST" : "GET"),
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+    headers: { "content-type": "application/json", ...bearer(), ...(init?.headers ?? {}) },
     body: init?.json !== undefined ? JSON.stringify(init.json, (_, v) => (typeof v === "bigint" ? v.toString() : v)) : init?.body,
   });
   const text = await res.text();

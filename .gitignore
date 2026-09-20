@@ -71,3 +71,7 @@ apps/web/e2e/*.png
 
 # local run logs (never committed)
 .logs/
+
+# server-side blob store + one-off secret drops
+apps/server/data/
+apps/server/.privy-authorization-key.env

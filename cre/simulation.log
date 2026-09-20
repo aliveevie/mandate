@@ -1,4 +1,4 @@
-# cre workflow simulate — CRE CLI v1.34.0, no broadcast (report built and simulated, nothing sent) — 2026-09-16T12:34:52Z
+# cre workflow simulate — CRE CLI v1.34.0, no broadcast (report built and simulated, nothing sent) — 2026-09-20T09:25:51Z
 Initializing...
 Loading settings...
 Checking RPC connectivity...
@@ -6,44 +6,55 @@ Compiling workflow...
 ✓ Workflow compiled
 ✓ Simulation limits enabled
   HTTP: req=120kb resp=250kb timeout=10s | ConfHTTP: req=125kb resp=500kb timeout=1m30s | Consensus obs=25kb | ChainWrite evm_report=50kb evm_gas=10000000 solana_report=265b solana_cu=300000 | WASM binary=100mb compressed=20mb
-  Binary hash: 1402bd2c85ab36cacff823d3d93a3dfebbe681e4a19fd62a6f128aeac5d1451b
-  Config hash: 9b3f3bcaffe0e391875b3dcbeaec6e354662a6b5476e3c10beaaefdc85c5b8cb
-2026-09-16T13:35:05Z [SIMULATION] Simulator Initialized
+  Binary hash: 626e40ce7abd5a9f2c8a20b4e423dc7d0205cd016d6e2084f0800329fef7c61e
+  Config hash: 6cc2cc99d4ec0e849923c24d4e6d869b6a78cdf6e0f3e1d6134f32ebe6c620c1
+2026-09-20T10:26:39Z [SIMULATION] Simulator Initialized
 
-2026-09-16T13:35:05Z [SIMULATION] Running trigger trigger=cron-trigger@1.0.0
-2026-09-16T13:35:05Z [USER LOG] window 1789475705-1789562105 head block 63030517 on monad-testnet chainId=10143
-2026-09-16T13:35:11Z [USER LOG] tail scan blocks 63029317-63030517: 13 log queries, 0 Mandate event(s)
-2026-09-16T13:35:12Z [USER LOG] multicall: 17 reads in one chain call
-2026-09-16T13:35:12Z [USER LOG] adapter.attestor=0x0c89d72a5abf96556eeb14c31d87d55c7eccc573 receiver=0x0c89d72a5abf96556eeb14c31d87d55c7eccc573 ok=true
-2026-09-16T13:35:12Z [USER LOG] agent 1869: score=60 penalties={"trips":15,"frozen":0,"drawdown":20,"utilisation":0,"revoked":5,"llm":0} executed=8 trips=1 pnlBps=-1860 mandates=1
-2026-09-16T13:35:12Z [USER LOG] EVIDENCE 1869 1/2 {"schema":"0xca679f65cf918bd56d017c484868adb95410486c71f36ba469b4f5679e3d7886","chainId":"10143","agentId":"1869","windowStart":"1789475705","windowEnd":"1789562105","fromBlock":"63029317","toBlock":"63030517","mandateHashes":["0xb023465e209f578b382df2fecaffce5815acd5b8ce9743cda3a47deae8cc2140"],"executionTxHashes":["0x11ec366f4e1eeb99f02680bdc0c74f3277ee5e1a2c6184d61027b9e95e02fb42","0x1e46d9ea96f3a5ace08db13d98c57b010f57d338dbbbe732343f6d51f6fa3146","0x47e071917f7e8630d57d3ac09332f71439db786aec3a4bb7b78dcb819ff72c64","0x7e102130851952e93cba8a9d76c9b429cb6029cdd37ce6a65593b156c99ce676","0x84b9d83de1e3c47b6c0e6b0cdaa7d6c07988f52d7e7c6d26f645077a510a0c0a","0xa29aebdafd64eff28ca57e7f48a5f6711d
-2026-09-16T13:35:12Z [USER LOG] EVIDENCE 1869 2/2 75f4fd629fc8d0a3d6f747a9399ff5","0xd19f4e827991eda117dcfd5404094f9aa1adf7e264754cc8650c0129b900df93","0xebef061b9ba9269226bbeb19b45c0efb127761d09fdb7ac14e02e6c2d816a4c1"],"tripTxHashes":[],"executedCount":8,"tripCount":1,"spentInWindow":"186000000000000000000","realisedPnlBps":"-1860","worstDrawdownBps":"1860","utilisationBps":"6200","complianceScore":60,"markPriceUsdE6":"22077","llmRiskScore":255,"llmLevel":"","sources":["breaker-state","coingecko","mandate-api","monad-rpc"]}
-2026-09-16T13:35:12Z [USER LOG] EVIDENCE_HASH 1869 0x40e4d723ba500bdf9c35375a1a39de8bf9f82b555a7535317e2bc7a0e750d19b
-2026-09-16T13:35:13Z [USER LOG] agent 1869: attestation written tx=0x
+2026-09-20T10:26:39Z [SIMULATION] Running trigger trigger=cron-trigger@1.0.0
+2026-09-20T10:26:39Z [USER LOG] window 1789809999-1789896399 head block 64130064 on monad-testnet chainId=10143
+2026-09-20T10:26:46Z [USER LOG] tail scan blocks 64128864-64130064: 13 log queries, 10 Mandate event(s)
+2026-09-20T10:26:46Z [USER LOG] multicall: 22 reads in one chain call
+2026-09-20T10:26:46Z [USER LOG] adapter.attestor=0x0c89d72a5abf96556eeb14c31d87d55c7eccc573 receiver=0x0c89d72a5abf96556eeb14c31d87d55c7eccc573 ok=true
+2026-09-20T10:26:47Z [USER LOG] agent 1894: score=60 penalties={"trips":15,"frozen":0,"drawdown":20,"utilisation":0,"revoked":5,"llm":0} executed=7 trips=1 pnlBps=-1520 mandates=1
+2026-09-20T10:26:47Z [USER LOG] EVIDENCE 1894 1/3 {"schema":"0x7aec6ecb8e27c9a095fd6aa9b89d6cef5a70e3c89690a80581b3a96a76aa9f73","chainId":"10143","agentId":"1894","windowStart":"1789809999","windowEnd":"1789896399","fromBlock":"64128864","toBlock":"64130064","mandateHashes":["0xaba44660d5e72281ec3f50871db211bd1e1a6e76631d74810ddceccf41561537"],"mandates":[{"mandateHash":"0xaba44660d5e72281ec3f50871db211bd1e1a6e76631d74810ddceccf41561537","spendCap":"300000000000000000000","maxDrawdownBps":"1500","spent":"152000000000000000000","revoked":true,"validUntil":"1789899599","phase":1,"peakEquity":"1000000000000000000000","equityNow":"848000000000000000000","drawdownBps":"1520","trippedAtBlock":"64128859"}],"executionTxHashes":["0x20a865c0ea485b2f
+2026-09-20T10:26:47Z [USER LOG] EVIDENCE 1894 2/3 351880c70d2e96a88fa232eb8a0f99dc059b3bd9bb31fd55","0x4eaadb3586f7f63453c7aa46972306bc5cecc988dc48f1f2be85e4162005932c","0x601d6707397b499bb8ac36208300eb780c9eb0ca738ce930ae6c7471e6189900","0x96b5182750d0d5b9c7538c72c8de4e311fcd63789c67a4dc13e0ecbb873703a8","0xdd2b02c1c9632d1758a0509d4c5f79551a503da618bb2528563ada16a4fbe1b2","0xe8be98094dc346b49f97976f917501bf8f62ade9cade3838b0db5503b3bfca2b","0xece5c800d349cfd30224d75cdd1e933859c89f85ddbc48ef63010ab143723c8f"],"tripTxHashes":[],"executedCount":7,"tripCount":1,"spentInWindow":"152000000000000000000","realisedPnlBps":"-1520","worstDrawdownBps":"1520","utilisationBps":"5066","complianceScore":60,"penalties":{"trips":15,"frozen":0,"drawdown":20,
+2026-09-20T10:26:47Z [USER LOG] EVIDENCE 1894 3/3 "utilisation":0,"revoked":5,"llm":0},"markPriceUsdE6":"23543","llmRiskScore":255,"llmLevel":"","sources":["breaker-state","coingecko","mandate-api","monad-rpc"]}
+2026-09-20T10:26:47Z [USER LOG] EVIDENCE_HASH 1894 0x5fd9a6612e203737fb82f35c8c227dd9194d5048e1d4b1d651454fcbaf713f3e
+2026-09-20T10:26:48Z [USER LOG] agent 1894: attestation written tx=0x
+2026-09-20T10:26:48Z [USER LOG] agent 1895: score=60 penalties={"trips":15,"frozen":0,"drawdown":20,"utilisation":0,"revoked":5,"llm":0} executed=8 trips=1 pnlBps=-1510 mandates=1
+2026-09-20T10:26:48Z [USER LOG] EVIDENCE 1895 1/3 {"schema":"0x7aec6ecb8e27c9a095fd6aa9b89d6cef5a70e3c89690a80581b3a96a76aa9f73","chainId":"10143","agentId":"1895","windowStart":"1789809999","windowEnd":"1789896399","fromBlock":"64128864","toBlock":"64130064","mandateHashes":["0x0a72ab2c0ca2936dcd929c10790c1f651b52e5e302f8594af50b99029bccaeb9"],"mandates":[{"mandateHash":"0x0a72ab2c0ca2936dcd929c10790c1f651b52e5e302f8594af50b99029bccaeb9","spendCap":"300000000000000000000","maxDrawdownBps":"1500","spent":"151000000000000000000","revoked":true,"validUntil":"1789982538","phase":1,"peakEquity":"1000000000000000000000","equityNow":"849000000000000000000","drawdownBps":"1510","trippedAtBlock":"64129811"}],"executionTxHashes":["0x350963eb7a0400b2
+2026-09-20T10:26:48Z [USER LOG] EVIDENCE 1895 2/3 23fb8cb62dba970e2ddc807a8a0f9cf18ee8a5e0bb2dbd13","0x58ce64a2945eab3ac9661fee2602bfeb9253277963bf1d256e1119c158e4606e","0x782cb220571eee83a9dabae4421221732a06aba020727a15057275e60b1a55cb","0x7c4336fe34de99d8a125b64cd0c6b8b12640805e8d8a2f0fe45d35ac04df3371","0x7f2f689a3e63e3c79d6cc2d1342fbd0fff539037dba494f461c1be2f6b0f7d57","0x7f753938d825c8f563e2cf15e3f58ac4240da158b2f9a09e6f450e1c3249ea1e","0xde62df00021754356a2de311460f7f222b08d007852fda575f94b25d866afb81","0xee518334736c769a99d75af659149476475c2e7167bc8c32837dd79ed4a953d5"],"tripTxHashes":["0x7f753938d825c8f563e2cf15e3f58ac4240da158b2f9a09e6f450e1c3249ea1e"],"executedCount":8,"tripCount":1,"spentInWindow":"151000000000000000000","realise
+2026-09-20T10:26:48Z [USER LOG] EVIDENCE 1895 3/3 dPnlBps":"-1510","worstDrawdownBps":"1510","utilisationBps":"5033","complianceScore":60,"penalties":{"trips":15,"frozen":0,"drawdown":20,"utilisation":0,"revoked":5,"llm":0},"markPriceUsdE6":"23543","llmRiskScore":255,"llmLevel":"","sources":["coingecko","mandate-api","monad-logs","monad-rpc"]}
+2026-09-20T10:26:48Z [USER LOG] EVIDENCE_HASH 1895 0x3c033aa6690dc79ba7b933e8ad99532160dd8fd67bcb1342fb6e1ad4edb4ed60
+2026-09-20T10:26:48Z [USER LOG] agent 1895: attestation written tx=0x
 
 ✓ Workflow Simulation Result:
 {
   "attested": [
-    "1869: score 60 evidence 0x40e4d723ba500bdf9c35375a1a39de8bf9f82b555a7535317e2bc7a0e750d19b tx 0x"
+    "1894: score 60 evidence 0x5fd9a6612e203737fb82f35c8c227dd9194d5048e1d4b1d651454fcbaf713f3e tx 0x",
+    "1895: score 60 evidence 0x3c033aa6690dc79ba7b933e8ad99532160dd8fd67bcb1342fb6e1ad4edb4ed60 tx 0x"
   ],
   "chain": "monad-testnet",
-  "headBlock": "63030517",
+  "degraded": "none",
+  "headBlock": "64130064",
   "llm": "unavailable",
-  "markPriceUsd": "0.022077",
+  "markPriceUsd": "0.023543",
   "receiverIsAttestor": "true",
   "skipped": [
-    "1831: idle in window",
-    "1868: idle in window",
-    "1870: idle in window"
+    "1831: idle in window"
   ],
-  "window": "1789475705-1789562105"
+  "window": "1789809999-1789896399"
 }
 
-2026-09-16T13:35:13Z [SIMULATION] Execution finished signal received
-2026-09-16T13:35:13Z [SIMULATION] Skipping WorkflowEngineV2
+2026-09-20T10:26:48Z [SIMULATION] Execution finished signal received
+2026-09-20T10:26:48Z [SIMULATION] Skipping WorkflowEngineV2
 
 ╭──────────────────────────────────────────────────────╮
 │ Simulation complete! Ready to deploy your workflow?  │
 │                                                      │
 │ Run cre account access to request deployment access. │
 ╰──────────────────────────────────────────────────────╯
+
+⚠️  Update available! You’re running 1.34.0, but 1.35.0 is the latest.
+Run `cre update` or visit https://github.com/smartcontractkit/cre-cli/releases to upgrade.
+

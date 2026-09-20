@@ -10,6 +10,7 @@ import { api } from "../lib/api";
 import { useToast } from "../lib/toast";
 import { Address, Button, Card, Notice, Pill, Stat, ErrorNotice, Field, inputCls } from "../components/primitives";
 import { crossDeviceCheck, prfSupported, type CrossDeviceResult } from "../lib/prf";
+import { clearSession, ensureSession, storeSession } from "../lib/session";
 import type { Hex } from "viem";
 
 const erc20 = parseAbi(["function approve(address,uint256) returns (bool)", "function balanceOf(address) view returns (uint256)", "function allowance(address,address) view returns (uint256)"]);
@@ -68,6 +69,8 @@ export default function Onboard({ s }: { s: Session }) {
       const out = await s.tx.deployAccount(key.publicKey);
       const principal = await client.passkey.attach(key, out.address);
       await client.passkey.save(principal);
+      setBusy("Authorising this browser (one more passkey tap)…");
+      await ensureSession(principal, s.cfg.chainId).catch(() => { /* opened lazily before the first agent action */ });
       s.setPrincipal(principal);
       toast.push({ kind: "ok", title: "PasskeyAccount deployed", detail: out.address, link: { href: `${s.cfg.explorer}/address/${out.address}`, label: "View on explorer" } });
     } catch (e) { setErr(friendlyError(e)); } finally { setBusy(null); }
@@ -89,7 +92,7 @@ export default function Onboard({ s }: { s: Session }) {
     } catch (e) { setErr(friendlyError(e)); } finally { setBusy(null); }
   };
 
-  const forget = async () => { await client.passkey.clear(); s.setPrincipal(null); s.setPrivyPrincipal(null); s.setApproved(false); setBalance(null); setAllowance(null); };
+  const forget = async () => { await client.passkey.clear(); clearSession(); s.setPrincipal(null); s.setPrivyPrincipal(null); s.setApproved(false); setBalance(null); setAllowance(null); };
 
   /** Privy path: sign in -> server deploys a SignerAccount owned by the embedded wallet -> user delegates a scoped signer. */
   const privyCreate = async () => {
@@ -101,7 +104,8 @@ export default function Onboard({ s }: { s: Session }) {
       const token = privy.identityToken;
       if (!token) { setErr(friendlyError(new Error("Privy identity token not ready yet; try again in a second."))); return; }
       setPrivyStep("Creating your account…");
-      const info = await api<{ account: `0x${string}`; owner: `0x${string}`; scopePolicyId: string; delegated: boolean; signerId: string }>("/api/privy/principal", { json: { identityToken: token } });
+      const info = await api<{ account: `0x${string}`; owner: `0x${string}`; scopePolicyId: string; delegated: boolean; signerId: string; session?: { token: string; expiresAt: number } }>("/api/privy/principal", { json: { identityToken: token } });
+      if (info.session) storeSession({ account: info.account, token: info.session.token, expiresAt: info.session.expiresAt });
       setPrivyInfo(info);
       if (!info.delegated) {
         setPrivyStep("Delegating a scoped session signer…");
@@ -130,9 +134,11 @@ export default function Onboard({ s }: { s: Session }) {
   };
   const ready = !!s.principal && (allowance ?? 0n) > 0n;
 
+  const verifyMode = !!verifyParam;
   return (
-    <div className="space-y-6">
-      {!s.principal && (
+    <div className="flex flex-col gap-6">
+      {verifyMode && <Notice kind="info">Fresh-device mode: this page holds no local state. Only the passkey and the mandate hash below are used.</Notice>}
+      {!s.principal && !verifyMode && (
         <section className="glass glass-strong rise relative overflow-hidden rounded-3xl p-7 md:p-10">
           <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand/30 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-brand-2/20 blur-3xl" />
@@ -151,7 +157,7 @@ export default function Onboard({ s }: { s: Session }) {
         </section>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className={`grid gap-6 lg:grid-cols-5 ${verifyMode ? "order-2" : ""}`}>
         <Card className="lg:col-span-3 rise rise-1" title="Your principal" icon={<Fingerprint className="h-4 w-4" />} right={s.principal && <Pill tone="ok" dot>active</Pill>}>
           {!s.principal ? (
             <div className="space-y-5">
@@ -232,7 +238,7 @@ export default function Onboard({ s }: { s: Session }) {
         </Card>
       </div>
 
-      <Card className="rise rise-3" title="One passkey, many keys" icon={<Layers className="h-4 w-4" />} right={<Pill tone={prfCap === false ? "warn" : "brand"} dot>{prfCap === false ? "PRF not advertised by this browser" : "Mera PRF"}</Pill>}>
+      <Card className={`rise rise-3 ${verifyMode ? "order-1" : ""}`} title="One passkey, many keys" icon={<Layers className="h-4 w-4" />} right={<Pill tone={prfCap === false ? "warn" : "brand"} dot>{prfCap === false ? "PRF not advertised by this browser" : "Mera PRF"}</Pill>}>
         <div className="grid gap-6 lg:grid-cols-5">
           <div className="space-y-3 lg:col-span-2">
             <p className="text-sm leading-relaxed text-white/65">The same passkey that owns your account also does two jobs that are <em>not</em> wallet signing. Each uses its own PRF namespace, so the outputs are unrelated, and nothing derived is ever stored.</p>

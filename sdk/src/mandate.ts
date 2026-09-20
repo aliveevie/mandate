@@ -245,6 +245,13 @@ export function createMandateModule(deps: MandateModuleDeps) {
     /** Build the principal's side of a mandate. Pure; nothing is fetched. */
     build(params: MandateParams): MandateDraft {
       const { targets, selectors } = flattenTargets(params.targets);
+      // Mandated calls run as the principal. The protocol's own contracts gate privileged functions on
+      // `msg.sender == principal` (revoke, resetPeak, setEquitySource…), so they must never be mandate targets.
+      const { registry, executor, breaker, submitter, reputationAdapter } = deps.addresses;
+      const protocolAddrs = new Set([registry, executor, breaker, submitter, reputationAdapter].filter((a): a is Address => typeof a === "string").map((a) => a.toLowerCase()));
+      for (const t of targets) {
+        if (protocolAddrs.has(t.toLowerCase())) throw new Error(`Protocol contract ${t} cannot be a mandate target`);
+      }
       const validAfter = params.validAfter === undefined ? BigInt(Math.floor(Date.now() / 1000)) : toSeconds(params.validAfter);
       const validUntil = toSeconds(params.validUntil);
       if (validUntil <= validAfter) throw new Error("validUntil must be after validAfter");

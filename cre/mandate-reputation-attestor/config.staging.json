@@ -16,7 +16,12 @@
     "receiver": "0x0c89d72a5ABf96556EEB14c31d87D55c7ECCC573"
   },
   "agents": [
-    { "agentId": "1831", "mandateHashes": ["0x93d8c4c9a71f7228a6593df4d1aaac67ce0bd7d62d5e1c4b3097b4b90f7abf5c"] }
+    {
+      "agentId": "1831",
+      "mandateHashes": [
+        "0x93d8c4c9a71f7228a6593df4d1aaac67ce0bd7d62d5e1c4b3097b4b90f7abf5c"
+      ]
+    }
   ],
   "indexerUrl": "",
   "referenceApiUrl": "http://127.0.0.1:8787",
@@ -27,5 +32,6 @@
     "model": "claude-opus-5",
     "maxTokens": 1024,
     "effort": "low"
-  }
+  },
+  "attestWhenDegraded": false
 }

@@ -21,6 +21,8 @@ export interface MandateObservation {
 export interface ExecutionObservation {
 	mandateHash: `0x${string}`
 	txHash: `0x${string}`
+	/** Log index inside the transaction when the observation came from chain logs (several executions can share a tx). */
+	logIndex?: number
 	blockNumber: bigint
 	spent: bigint
 	phaseAfter: Phase
@@ -36,11 +38,13 @@ export interface TripObservation {
 
 export type LlmLevel = 'low' | 'medium' | 'high'
 export interface LlmNote {
+	/** DON-median of the nodes' scores; the only field that goes through consensus. */
 	riskScore: number // 0..100
+	/** Derived from riskScore after consensus (low < 35 <= medium < 70 <= high), so it is deterministic. */
 	level: LlmLevel
-	flags: string[]
-	summary: string
 }
+
+export const llmLevelOf = (riskScore: number): LlmLevel => (riskScore < 35 ? 'low' : riskScore < 70 ? 'medium' : 'high')
 
 export interface ScoreInput {
 	mandates: MandateObservation[]

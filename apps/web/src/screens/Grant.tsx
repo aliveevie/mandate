@@ -8,6 +8,7 @@ import { friendlyError, type FriendlyError } from "../lib/errors";
 import { api, type AgentView } from "../lib/api";
 import { getClient, getPublicClient } from "../lib/client";
 import { claimIdentity, defaultPolicy, sealPolicy, storeVault, type AgentPolicy } from "../lib/prf";
+import { ensureSession } from "../lib/session";
 import { useToast } from "../lib/toast";
 import { Address, Button, Card, Field, inputCls, Notice, Pill, Stat, TxLink, ErrorNotice } from "../components/primitives";
 
@@ -38,6 +39,7 @@ export default function Grant({ s }: { s: Session }) {
   const provision = async () => {
     setErr(null); setBusy("provision");
     try {
+      if (s.principal) await ensureSession(s.principal, s.cfg.chainId);
       let a: AgentView;
       if (s.tx.mode.kind === "wallet" && walletClient?.account && publicClient) {
         // Wallet mode: the server only mints a key; your wallet registers the ERC-8004 identity and funds the key.
@@ -63,6 +65,7 @@ export default function Grant({ s }: { s: Session }) {
     if (!s.agent || !prfCapable || s.principal?.kind !== "webauthn") return;
     setErr(null); setClaiming(true);
     try {
+      await ensureSession(s.principal, s.cfg.chainId);
       const out = await claimIdentity(s.agent.agentId, s.principal.credentialId);
       setClaim({ address: out.address, namespace: out.namespace, tx: out.tx });
       s.setAgent({ ...s.agent, identityOwner: out.owner, identityClaimTx: out.tx ?? undefined });
