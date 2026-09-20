@@ -5,22 +5,19 @@
 // The CRE WASM runtime has no fetch and cannot load the Anthropic SDK, so the API is called over the HTTP
 // capability with the documented request shape (output_config.format json_schema, adaptive thinking default).
 import {
-	ConsensusAggregationByFields,
 	HTTPClient,
 	consensusIdenticalAggregation,
 	consensusMedianAggregation,
 	hexToBase64,
-	identical,
 	json,
-	median,
 	ok,
 	type NodeRuntime,
 	type Runtime,
 	text,
 } from '@chainlink/cre-sdk'
 import { type Hex, stringToHex } from 'viem'
-import type { LlmLevel, LlmNote, Phase } from './scoring'
-import { PHASES } from './scoring'
+import type { LlmNote, Phase } from './scoring'
+import { PHASES, llmLevelOf } from './scoring'
 
 export interface IndexedWindow {
 	mandateHashes: Hex[]
@@ -98,7 +95,7 @@ export interface ReferenceAgent {
 	agentId: string
 	mandateHash?: Hex
 	/** Executions the reference server relayed for this agent (declared amounts; the chain has the measured spend). */
-	executions: { mandateHash: Hex; txHash: Hex; amount: bigint }[]
+	executions: { mandateHash: Hex; txHash: Hex; amount: bigint; at: bigint }[]
 }
 
 /** Agents the reference server knows about, with their current mandate and relayed executions. */
@@ -107,25 +104,25 @@ export function fetchReferenceAgents(runtime: Runtime<unknown>, apiUrl: string):
 	const fetchFn = (rt: NodeRuntime<unknown>, url: string): string => {
 		const resp = new HTTPClient().sendRequest(rt, { url: `${url.replace(/\/$/, '')}/api/agents`, method: 'GET' }).result()
 		if (!ok(resp)) throw new Error(`reference api ${resp.statusCode}`)
-		const list = json(resp) as { agentId: string; mandateHash?: string; feed?: { kind: string; tx?: string; amount?: string; mandateHash?: string }[] }[]
+		const list = json(resp) as { agentId: string; mandateHash?: string; feed?: { kind: string; tx?: string; amount?: string; mandateHash?: string; at?: number }[] }[]
 		const agents = list
 			.map((a) => ({
 				agentId: String(a.agentId),
 				mandateHash: a.mandateHash,
 				executions: (a.feed ?? [])
 					.filter((f) => f.kind === 'executed' && f.tx && f.mandateHash)
-					.map((f) => ({ mandateHash: f.mandateHash!, txHash: f.tx!, amount: f.amount ?? '0' }))
+					.map((f) => ({ mandateHash: f.mandateHash!, txHash: f.tx!, amount: f.amount ?? '0', at: Math.floor((f.at ?? 0) / 1000) }))
 					.sort((x, y) => (x.txHash < y.txHash ? -1 : 1)),
 			}))
 			.sort((a, b) => (BigInt(a.agentId) < BigInt(b.agentId) ? -1 : 1))
 		return JSON.stringify(agents)
 	}
 	const raw = runtime.runInNodeMode(fetchFn, consensusIdenticalAggregation<string>())(apiUrl).result()
-	const parsed = JSON.parse(raw) as { agentId: string; mandateHash?: string; executions: { mandateHash: string; txHash: string; amount: string }[] }[]
+	const parsed = JSON.parse(raw) as { agentId: string; mandateHash?: string; executions: { mandateHash: string; txHash: string; amount: string; at: number }[] }[]
 	return parsed.map((a) => ({
 		agentId: a.agentId,
 		mandateHash: a.mandateHash as Hex | undefined,
-		executions: a.executions.map((e) => ({ mandateHash: e.mandateHash as Hex, txHash: e.txHash as Hex, amount: BigInt(e.amount) })),
+		executions: a.executions.map((e) => ({ mandateHash: e.mandateHash as Hex, txHash: e.txHash as Hex, amount: BigInt(e.amount), at: BigInt(e.at) })),
 	}))
 }
 
@@ -192,10 +189,15 @@ metrics you are given. Be conservative and deterministic: the same metrics must 
 Rules of thumb: trips or a frozen breaker are high risk; utilisation above 90% or drawdown near the limit is
 medium; a quiet, in-bounds window is low. Use 'none' as the only flag when nothing stands out.`
 
-/** Returns null when the LLM step is disabled, has no key, or fails; the attestation then proceeds without it. */
+/**
+ * Returns null when the LLM step is disabled, has no key, or fails; the attestation then proceeds without it.
+ * Consensus: each node asks the model for a structured note and reports only the integer riskScore; the DON takes
+ * the median. Free text cannot reach byte-identical agreement across nodes, so the summary and flags are logged per
+ * node and never enter consensus or the evidence. `level` is derived from the agreed score.
+ */
 export function fetchRiskNote(runtime: Runtime<unknown>, cfg: LlmConfig, apiKey: string, ctx: LlmContext): LlmNote | null {
 	if (!cfg.enabled || !apiKey) return null
-	const fetchFn = (rt: NodeRuntime<unknown>, key: string, context: string): LlmNote => {
+	const fetchFn = (rt: NodeRuntime<unknown>, key: string, context: string): number => {
 		const resp = postJson(
 			rt,
 			cfg.apiUrl,
@@ -213,24 +215,12 @@ export function fetchRiskNote(runtime: Runtime<unknown>, cfg: LlmConfig, apiKey:
 		if (body.stop_reason === 'refusal') throw new Error('llm refused')
 		const textBlock = body.content?.find((b) => b.type === 'text')?.text
 		if (!textBlock) throw new Error('llm: no text block')
-		const parsed = JSON.parse(textBlock) as LlmNote
-		const level = (['low', 'medium', 'high'] as LlmLevel[]).includes(parsed.level) ? parsed.level : 'high'
-		return {
-			riskScore: Math.max(0, Math.min(100, Math.round(Number(parsed.riskScore)))),
-			level,
-			flags: [...(parsed.flags ?? [])].map(String).sort(),
-			summary: String(parsed.summary ?? '').slice(0, 240),
-		}
+		const parsed = JSON.parse(textBlock) as { riskScore?: unknown; level?: unknown; flags?: unknown; summary?: unknown }
+		const riskScore = Math.max(0, Math.min(100, Math.round(Number(parsed.riskScore))))
+		if (!Number.isFinite(riskScore)) throw new Error('llm: riskScore missing')
+		rt.log(`llm node note: score ${riskScore} level ${String(parsed.level)} flags ${JSON.stringify(parsed.flags ?? [])} summary ${String(parsed.summary ?? '').slice(0, 240)}`)
+		return riskScore
 	}
-	return runtime
-		.runInNodeMode(
-			fetchFn,
-			ConsensusAggregationByFields<LlmNote>({
-				riskScore: median,
-				level: identical,
-				flags: identical,
-				summary: identical,
-			}),
-		)(apiKey, JSON.stringify(ctx))
-		.result()
+	const riskScore = runtime.runInNodeMode(fetchFn, consensusMedianAggregation<number>())(apiKey, JSON.stringify(ctx)).result()
+	return { riskScore, level: llmLevelOf(riskScore) }
 }

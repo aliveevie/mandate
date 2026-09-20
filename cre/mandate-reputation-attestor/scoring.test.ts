@@ -52,7 +52,7 @@ describe('score', () => {
 				mandates: [mandate({ spent: 950n, revoked: true, validUntil: 10n })],
 				executions: [{ mandateHash: H, txHash: T, blockNumber: 1n, spent: 50n, phaseAfter: 'Armed' }],
 				trips: [],
-				llm: { riskScore: 80, level: 'high', flags: ['cap-edge'], summary: 'x' },
+				llm: { riskScore: 80, level: 'high' },
 			},
 			5n,
 		)
@@ -70,7 +70,7 @@ describe('score', () => {
 			mandates: [mandate({ phase: 'Cooldown' as const, drawdownBps: 9000n, spent: 1000n, revoked: true, validUntil: 10n })],
 			executions: [],
 			trips: [trip, trip, trip],
-			llm: { riskScore: 99, level: 'high' as const, flags: [], summary: '' },
+			llm: { riskScore: 99, level: 'high' as const },
 		}
 		const a = score(input, 1n)
 		const b = score(input, 1n)

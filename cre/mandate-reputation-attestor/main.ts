@@ -35,7 +35,7 @@ import {
 	RiskBreakerAbi,
 	reportParams,
 } from './abi'
-import { EVIDENCE_SCHEMA, type Evidence, evidenceHash, evidenceToJson } from './evidence'
+import { EVIDENCE_SCHEMA, type Evidence, type EvidenceMandate, evidenceHash, evidenceToJson } from './evidence'
 import { type ExecutionObservation, type MandateObservation, PHASES, type TripObservation, score } from './scoring'
 import { fetchIndexedWindow, fetchMarkPriceUsdE6, fetchReferenceAgents, fetchRiskNote } from './sources'
 
@@ -62,8 +62,15 @@ const configSchema = z.object({
 		maxTokens: z.number().int().positive(),
 		effort: z.enum(['low', 'medium', 'high']),
 	}),
+	/** Write an attestation even when a configured data source (indexer / reference API) failed this run. Default false: fail safe. */
+	attestWhenDegraded: z.boolean(),
+}).refine((c) => 2 + Math.ceil((c.tailBlocks + 1) / c.logChunkBlocks) <= CHAIN_READ_BUDGET, {
+	message: `1 header + ceil((tailBlocks+1)/logChunkBlocks) log queries + 1 multicall must stay within CRE's ${15} chain reads per run`,
 })
 type Config = z.infer<typeof configSchema>
+
+/** CRE's per-execution chain-read limit (PerWorkflow.ChainRead.CallLimit). */
+const CHAIN_READ_BUDGET = 15
 
 const TOPIC_GRANTED = toEventSelector(
 	'MandateGranted(bytes32,address,uint256,address,(address,uint256,address,address[],bytes4[],address,uint256,uint256,uint256,uint64,uint64,uint256,bytes32))',
@@ -121,7 +128,7 @@ function scanTail(runtime: Runtime<Config>, evm: EVMClient, fromBlock: bigint, t
 				const ev = decodeEventLog({ abi: MandateExecutorAbi, eventName: 'MandateExecuted', topics, data })
 				const w = bucket(ev.args.agentId)
 				w.mandateHashes.add(lower(ev.args.mandateHash))
-				w.executions.push({ mandateHash: lower(ev.args.mandateHash), txHash, blockNumber, spent: ev.args.spent, phaseAfter: phaseOf(ev.args.phaseAfter) })
+				w.executions.push({ mandateHash: lower(ev.args.mandateHash), txHash, logIndex: log.index, blockNumber, spent: ev.args.spent, phaseAfter: phaseOf(ev.args.phaseAfter) })
 				found++
 			} else if (topics[0] === TOPIC_TRIPPED) {
 				const ev = decodeEventLog({ abi: RiskBreakerAbi, eventName: 'Tripped', topics, data })
@@ -214,7 +221,7 @@ const onCronTrigger = (runtime: Runtime<Config>) => {
 	const windowEnd = head.timestamp
 	const windowStart = windowEnd - BigInt(cfg.windowSeconds)
 	const tailFrom = head.number > BigInt(cfg.tailBlocks) ? head.number - BigInt(cfg.tailBlocks) : 0n
-	// Block that approximately opened the window (Monad ≈ 400 ms blocks); used to judge breaker-state trips.
+	// Block that approximately opened the window (Monad ≈ 400 ms blocks); used to place breaker-state trips inside or outside the window.
 	const windowBlocks = BigInt(Math.floor((cfg.windowSeconds * 1000) / cfg.blockTimeMs))
 	const windowFromBlock = head.number > windowBlocks ? head.number - windowBlocks : 0n
 	runtime.log(`window ${windowStart}-${windowEnd} head block ${head.number} on ${network.chainSelector.name} chainId=${chainId}`)
@@ -227,6 +234,9 @@ const onCronTrigger = (runtime: Runtime<Config>) => {
 		for (const h of a.mandateHashes) w.mandateHashes.add(lower(h))
 		byAgent.set(a.agentId, w)
 	}
+	// A configured source that fails makes the run "degraded": missing trips or executions would inflate the score,
+	// so by default no attestation is written from a degraded run (see attestWhenDegraded).
+	const degraded: string[] = []
 	try {
 		for (const a of fetchReferenceAgents(runtime, cfg.referenceApiUrl)) {
 			let w = byAgent.get(a.agentId)
@@ -234,20 +244,16 @@ const onCronTrigger = (runtime: Runtime<Config>) => {
 			w.sources.add('mandate-api')
 			if (a.mandateHash) w.mandateHashes.add(lower(a.mandateHash))
 			for (const e of a.executions) {
+				if (e.at < windowStart) continue // outside the window
 				w.mandateHashes.add(lower(e.mandateHash))
 				w.executions.push({ mandateHash: lower(e.mandateHash), txHash: lower(e.txHash), blockNumber: 0n, spent: e.amount, phaseAfter: 'Armed' })
 			}
 		}
 	} catch (e) {
+		degraded.push('mandate-api')
 		runtime.log(`reference API unavailable: ${String(e).slice(0, 160)}`)
 	}
 	if (cfg.tailBlocks > 0) scanTail(runtime, evm, tailFrom, head.number, byAgent)
-	for (const w of byAgent.values()) {
-		// chain-sourced executions (measured spend, block) replace API-sourced ones with the same tx hash
-		const byTx = new Map<Hex, ExecutionObservation>()
-		for (const e of w.executions) if (!byTx.has(e.txHash) || e.blockNumber > 0n) byTx.set(e.txHash, e)
-		w.executions = [...byTx.values()]
-	}
 	for (const [agentKey, w] of byAgent) {
 		try {
 			const idx = fetchIndexedWindow(runtime, cfg.indexerUrl, BigInt(agentKey), windowStart)
@@ -259,8 +265,23 @@ const onCronTrigger = (runtime: Runtime<Config>) => {
 			const seenTrips = new Set(w.trips.map((t) => t.txHash))
 			for (const t of idx.trips) if (!seenTrips.has(lower(t.txHash))) w.trips.push({ ...t, txHash: lower(t.txHash), mandateHash: lower(t.mandateHash) })
 		} catch (e) {
+			if (!degraded.includes('envio')) degraded.push('envio')
 			runtime.log(`agent ${agentKey}: indexer unavailable: ${String(e).slice(0, 160)}`)
 		}
+	}
+
+	for (const w of byAgent.values()) {
+		// Chain observations are keyed by tx + log index (one tx can hold several executions) and replace any
+		// API observation of the same tx (which only knows the declared amount, not the measured spend).
+		const chainTxs = new Set(w.executions.filter((e) => e.blockNumber > 0n).map((e) => e.txHash))
+		const seen = new Set<string>()
+		w.executions = w.executions.filter((e) => {
+			if (e.blockNumber === 0n && chainTxs.has(e.txHash)) return false
+			const key = e.blockNumber > 0n ? `${e.txHash}:${e.logIndex ?? -1}` : e.txHash
+			if (seen.has(key)) return false
+			seen.add(key)
+			return true
+		})
 	}
 
 	// 3. Everything onchain, in one read.
@@ -291,6 +312,7 @@ const onCronTrigger = (runtime: Runtime<Config>) => {
 
 	const attested: string[] = []
 	const skipped: string[] = []
+	const failed: string[] = []
 
 	for (const agentKey of agentIds) {
 		const agentId = BigInt(agentKey)
@@ -310,6 +332,10 @@ const onCronTrigger = (runtime: Runtime<Config>) => {
 		}
 		if (chain.mandates.length === 0) {
 			skipped.push(`${agentKey}: no mandates found onchain`)
+			continue
+		}
+		if (degraded.length && !cfg.attestWhenDegraded) {
+			skipped.push(`${agentKey}: not attested, run is degraded (${degraded.join(', ')} unavailable)`)
 			continue
 		}
 		const mandates = chain.mandates
@@ -344,7 +370,7 @@ const onCronTrigger = (runtime: Runtime<Config>) => {
 				})
 				if (llm) {
 					sources.add('anthropic')
-					runtime.log(`agent ${agentKey}: llm risk ${llm.riskScore}/100 ${llm.level} [${llm.flags.join(',')}] ${llm.summary}`)
+					runtime.log(`agent ${agentKey}: llm risk ${llm.riskScore}/100 (${llm.level}, DON median)`)
 				}
 			} catch (e) {
 				runtime.log(`agent ${agentKey}: llm note unavailable: ${String(e).slice(0, 160)}`)
@@ -362,6 +388,21 @@ const onCronTrigger = (runtime: Runtime<Config>) => {
 			fromBlock: tailFrom,
 			toBlock: head.number,
 			mandateHashes: mandates.map((m) => m.mandateHash),
+			mandates: mandates.map(
+				(m): EvidenceMandate => ({
+					mandateHash: m.mandateHash,
+					spendCap: m.spendCap,
+					maxDrawdownBps: m.maxDrawdownBps,
+					spent: m.spent,
+					revoked: m.revoked,
+					validUntil: m.validUntil,
+					phase: PHASES.indexOf(m.phase),
+					peakEquity: m.peakEquity,
+					equityNow: m.equityNow,
+					drawdownBps: m.drawdownBps,
+					trippedAtBlock: m.trippedAtBlock,
+				}),
+			),
 			executionTxHashes: w.executions.map((e) => e.txHash),
 			tripTxHashes: w.trips.flatMap((t) => (t.txHash ? [t.txHash] : [])),
 			executedCount: s.executedCount,
@@ -371,6 +412,14 @@ const onCronTrigger = (runtime: Runtime<Config>) => {
 			worstDrawdownBps: s.worstDrawdownBps,
 			utilisationBps: s.utilisationBps,
 			complianceScore: s.complianceScore,
+			penalties: {
+				trips: s.penalties.trips ?? 0,
+				frozen: s.penalties.frozen ?? 0,
+				drawdown: s.penalties.drawdown ?? 0,
+				utilisation: s.penalties.utilisation ?? 0,
+				revoked: s.penalties.revoked ?? 0,
+				llm: s.penalties.llm ?? 0,
+			},
 			markPriceUsdE6: BigInt(markPriceUsdE6),
 			llmRiskScore: llm ? llm.riskScore : 255,
 			llmLevel: llm ? llm.level : '',
@@ -404,24 +453,32 @@ const onCronTrigger = (runtime: Runtime<Config>) => {
 			skipped.push(`${agentKey}: report built (${payload.length / 2 - 1} bytes) but not written: ${cfg.dryRun ? 'dryRun' : 'receiver is not the attestor'}`)
 			continue
 		}
-		const report = runtime.report(prepareReportRequest(payload)).result()
-		const resp = evm.writeReport(runtime, { receiver: cfg.contracts.receiver, report, gasConfig: { gasLimit: cfg.gasLimit } }).result()
-		if (resp.txStatus !== TxStatus.SUCCESS) throw new Error(`writeReport failed for agent ${agentKey}: ${resp.errorMessage || resp.txStatus}`)
-		// The forwarder's transaction can succeed while the receiver call inside it reverts (e.g. out of gas):
-		// 0 = RECEIVER_CONTRACT_EXECUTION_STATUS_SUCCESS, 1 = REVERTED. A reverted receiver means no attestation.
-		if (resp.receiverContractExecutionStatus !== 0) {
-			throw new Error(`receiver reverted for agent ${agentKey} (status ${resp.receiverContractExecutionStatus}); raise gasLimit or check the receiver's checks`)
+		try {
+			const report = runtime.report(prepareReportRequest(payload)).result()
+			const resp = evm.writeReport(runtime, { receiver: cfg.contracts.receiver, report, gasConfig: { gasLimit: cfg.gasLimit } }).result()
+			if (resp.txStatus !== TxStatus.SUCCESS) throw new Error(`writeReport failed: ${resp.errorMessage || resp.txStatus}`)
+			// The forwarder's transaction can succeed while the receiver call inside it reverts (e.g. out of gas):
+			// 0 = RECEIVER_CONTRACT_EXECUTION_STATUS_SUCCESS, 1 = REVERTED. A reverted receiver means no attestation.
+			if (resp.receiverContractExecutionStatus !== 0) {
+				throw new Error(`receiver reverted (status ${resp.receiverContractExecutionStatus}); raise gasLimit or check the receiver's checks`)
+			}
+			const txHash = resp.txHash ? bytesToHex(resp.txHash) : '0x'
+			runtime.log(`agent ${agentKey}: attestation written tx=${txHash}`)
+			attested.push(`${agentKey}: score ${s.complianceScore} evidence ${eh} tx ${txHash}`)
+		} catch (e) {
+			// one agent's failed write must not stop the others; the run still fails at the end
+			failed.push(`${agentKey}: ${String(e).slice(0, 200)}`)
+			runtime.log(`agent ${agentKey}: write failed: ${String(e).slice(0, 200)}`)
 		}
-		const txHash = resp.txHash ? bytesToHex(resp.txHash) : '0x'
-		runtime.log(`agent ${agentKey}: attestation written tx=${txHash}`)
-		attested.push(`${agentKey}: score ${s.complianceScore} evidence ${eh} tx ${txHash}`)
 	}
+	if (failed.length) throw new Error(`attestation writes failed: ${failed.join(' | ')}`)
 
 	return {
 		chain: network.chainSelector.name,
 		window: `${windowStart}-${windowEnd}`,
 		headBlock: head.number.toString(),
 		receiverIsAttestor: String(receiverIsAttestor),
+		degraded: degraded.join(',') || 'none',
 		markPriceUsd: (markPriceUsdE6 / 1e6).toFixed(6),
 		llm: llmKey ? 'enabled' : 'unavailable',
 		attested,
