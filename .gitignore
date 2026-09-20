@@ -75,3 +75,6 @@ apps/web/e2e/*.png
 # server-side blob store + one-off secret drops
 apps/server/data/
 apps/server/.privy-authorization-key.env
+
+# local tool binaries (verified downloads, never committed)
+.tools/
