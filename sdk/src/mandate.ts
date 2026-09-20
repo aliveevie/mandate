@@ -247,7 +247,8 @@ export function createMandateModule(deps: MandateModuleDeps) {
       const { targets, selectors } = flattenTargets(params.targets);
       // Mandated calls run as the principal. The protocol's own contracts gate privileged functions on
       // `msg.sender == principal` (revoke, resetPeak, setEquitySource…), so they must never be mandate targets.
-      const protocolAddrs = new Set(Object.values(deps.addresses).filter((a): a is Address => typeof a === "string").map((a) => a.toLowerCase()));
+      const { registry, executor, breaker, submitter, reputationAdapter } = deps.addresses;
+      const protocolAddrs = new Set([registry, executor, breaker, submitter, reputationAdapter].filter((a): a is Address => typeof a === "string").map((a) => a.toLowerCase()));
       for (const t of targets) {
         if (protocolAddrs.has(t.toLowerCase())) throw new Error(`Protocol contract ${t} cannot be a mandate target`);
       }
