@@ -241,7 +241,7 @@ export function createMandateModule(deps: MandateModuleDeps) {
     };
   }
 
-  return {
+  const mandateApi = {
     /** Build the principal's side of a mandate. Pure; nothing is fetched. */
     build(params: MandateParams): MandateDraft {
       const { targets, selectors } = flattenTargets(params.targets);
@@ -315,7 +315,7 @@ export function createMandateModule(deps: MandateModuleDeps) {
         const nonce = await account.read.nonce();
         signature = await principal.signChallenge(await account.read.revokeDigest([hash, nonce]));
       }
-      return this.revokeWithSignature(principal.address, hash, signature, opts);
+      return mandateApi.revokeWithSignature(principal.address, hash, signature, opts);
     },
 
     /** Digest the passkey must sign to revoke `hash` from `account` (uses the account's current nonce). */
@@ -363,6 +363,7 @@ export function createMandateModule(deps: MandateModuleDeps) {
     domain: () => mandateDomain(deps.chainId, deps.addresses.registry),
     types: mandateTypedDataTypes,
   };
+  return mandateApi;
 }
 
 export type MandateModule = ReturnType<typeof createMandateModule>;

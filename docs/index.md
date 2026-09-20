@@ -15,14 +15,29 @@ Mandate is a primitive, not a product. The reference app exists only to prove th
 | Reputation that is not a leaderboard | Compliance attested by one authorised attestor from on-chain evidence and mirrored into the ERC-8004 Reputation Registry. Agents cannot self-attest |
 | Pre-inclusion privacy | Execution through Monad's BTX encrypted mempool, with a commit-reveal mode behind the same interface |
 
+## Why no single platform can capture it
+
+- **Authorisation lives in the authenticator.** The passkey never leaves the device; the account it owns is a contract on Monad. No operator can sign for the principal.
+- **Enforcement lives in the registry.** Caps, whitelist, expiry and revocation are checked onchain on every call. Compromising the app, the relayer or the agent does not widen a mandate.
+- **Reputation lives in ERC-8004 and is written from evidence.** The only writer is a DON-signed workflow whose evidence hash anyone can recompute; the operator cannot forge a score and the agent cannot self-report.
+- **Policy lives in ciphertext.** Strategy is encrypted to the principal's passkey; the store that holds it learns nothing.
+- **Every other part is replaceable.** Relayer, front end, indexer, agent key custody and venues are all integrator choices. Wallet mode needs no server at all.
+
+## Who builds on it
+
+Agent platforms and wallets (issuing mandates), agent developers (executing under them), and marketplaces or routers
+(consuming reputation). [Who builds on Mandate](adopters.md) names them and explains why they would not build it
+themselves; [Integrate in 15 minutes](integrate.md) shows each path in code.
+
 ## Where things are
 
 - **Monad testnet deployment** and every transaction hash: [Contracts](contracts.md)
-- **Ten-minute quickstart** against testnet: [Quickstart](quickstart.md)
+- **Ten-minute quickstart** against testnet: [Quickstart](quickstart.md); every call, typed: [SDK reference](sdk-reference.md)
 - **How mandates, the breaker and reputation fit together**: [Concepts](concepts.md)
 - **Threat model and the seven tested properties**: [Security](security.md)
 - **GraphQL for mandates, executions and reputation**: [Indexer](indexer.md)
-- **Reference app** (four screens, wallet connect or gasless relay, Dockerised, Render Blueprint): `apps/` in the repository, see the root README
+- **Reference app** (four screens, wallet connect or gasless relay): [Try the reference app](try-it.md)
+- **What ships next**: [Roadmap](roadmap.md)
 
 ## The three Monad primitives, and how Mandate uses each
 

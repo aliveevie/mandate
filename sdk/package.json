@@ -52,7 +52,9 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "quickstart": "tsx examples/quickstart.ts"
+    "quickstart": "tsx examples/quickstart.ts",
+    "example:agent": "tsx examples/agent-runner.ts",
+    "example:tool": "tsx examples/agent-tool.ts"
   },
   "peerDependencies": {
     "viem": "^2.21.0",

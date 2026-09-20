@@ -12,6 +12,8 @@ import {
   PasskeyAccountAbi,
   PrivateSubmitterAbi,
   RiskBreakerAbi,
+  SignerAccountAbi,
+  CREAttestationReceiverAbi,
 } from "./abi/generated.js";
 
 /** Every custom error the protocol can revert with, merged for decoding. */
@@ -22,6 +24,8 @@ export const mandateErrorsAbi = [
   ...PasskeyAccountAbi,
   ...PrivateSubmitterAbi,
   ...ERC8004ReputationAdapterAbi,
+  ...SignerAccountAbi,
+  ...CREAttestationReceiverAbi,
 ].filter((item) => item.type === "error") as unknown as Abi;
 
 /** Solidity custom error names, 1:1. */
@@ -64,7 +68,15 @@ export type MandateErrorName =
   // ERC8004ReputationAdapter
   | "NotAttestor"
   | "InvalidScore"
-  | "InvalidWindow";
+  | "InvalidWindow"
+  // CREAttestationReceiver
+  | "UntrustedForwarder"
+  | "MalformedMetadata"
+  | "InvalidAuthor"
+  | "InvalidWorkflowName"
+  | "InvalidWorkflowId"
+  | "WorkflowNameRequiresAuthor"
+  | "StaleReport";
 
 /**
  * A typed protocol revert. `name` is the Solidity error name and `args` its decoded arguments,
