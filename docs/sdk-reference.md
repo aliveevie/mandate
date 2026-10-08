@@ -123,3 +123,24 @@ breaker, accounts, submitter, adapter and CRE receiver is decoded; `decodeMandat
 `agents.createWallet / account / mirrorMandate / revokeMirror / probe / listWallets / setRevokedPolicy` and
 `sessions.embeddedWallet / createScopePolicy / signTypedData / principal`. Pure builders `buildMandatePolicy`,
 `revokedPolicyRules` and `buildSessionSignerPolicy` produce the policy JSON without network calls and are unit-tested.
+
+## `@ibxlab/mandate/assay`
+
+A mandate bounds how much an agent spends. This entry point bounds who the inference money goes to: the agent only pays hosts that open verifiers grade well on [Assay](https://github.com/trudransh/Assay)'s VerifierRegistry. It's one view call, it needs no new dependencies, and it fails closed.
+
+```ts
+import { createInferenceGuard, guardAgent } from "@ibxlab/mandate/assay";
+
+const guard = createInferenceGuard({ publicClient, model: "z-ai/glm-5.3", host: "openrouter:deepinfra/fp8", verifiers: [trustedVerifier] });
+const agent = guardAgent(client.agent.load({ mandateHash, executor }), guard, { skip: (p) => p.amount < cheap });
+await agent.execute({ target: inferenceVenue, data, amount }); // InferenceHostRefused before anything is sent
+```
+
+| Call | Notes |
+|---|---|
+| `createInferenceGuard({ publicClient, model, host, verifiers, reference?, allow?, registry? })` | `check()` returns `{ status, grade, by }`. `assert()` throws `InferenceHostRefused` (`status` = `unknown`, `warn`, `fail` or `error`) unless the status is in `allow` (default `["pass"]`) |
+| `guardAgent(agent, guard, { skip? })` | The same agent; `validate` and `execute` run the grade check first. `skip` lets cheap calls through |
+| `gradeStatus(grade, { now, reference? })` | `unknown`: none, or older than 7 days. `fail`: the host's interval high is below the reference's low. `warn`: under 30 samples. Otherwise `pass` |
+| `assayHostKey.agent(chainId, agentId)` / `.openrouter(tag)` / `.direct(host)`, `hostKeyOf(spec)` | Grades follow host identity, not signing keys. Each key is keccak256 of `erc8004:<c>:<id>`, `openrouter:<tag>` or `direct:<host>` |
+| `ASSAY_VERIFIER_REGISTRY` | Monad testnet: `0x7755818dc08659D2A3A66FA3ddb1Ce636c145C91` |
+

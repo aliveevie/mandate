@@ -23,6 +23,11 @@
       "types": "./dist/prf.d.ts",
       "import": "./dist/prf.js",
       "require": "./dist/prf.cjs"
+    },
+    "./assay": {
+      "types": "./dist/assay.d.ts",
+      "import": "./dist/assay.js",
+      "require": "./dist/assay.cjs"
     }
   },
   "files": [
